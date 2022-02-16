@@ -33,6 +33,7 @@ import (
 
 const (
 	jsonrpcVersion           = "2.0"
+	vsn                      = "2.0" // TODO: remove
 	serviceMethodSeparator   = "_"
 	subscribeMethodSuffix    = "_subscribe"
 	unsubscribeMethodSuffix  = "_unsubscribe"
@@ -40,6 +41,8 @@ const (
 )
 
 const defaultErrorCode = -32000
+
+var null = json.RawMessage("null")
 
 type jsonRequest struct {
 	Method  string          `json:"method"`
@@ -376,4 +379,76 @@ func (c *jsonCodec) Close() {
 // Closed returns a channel which will be closed when Close is called
 func (c *jsonCodec) Closed() <-chan interface{} {
 	return c.closed
+}
+
+// A value of this type can a JSON-RPC request, notification, successful response or
+// error response. Which one it is depends on the fields.
+type jsonrpcMessage struct {
+	Version string          `json:"jsonrpc,omitempty"`
+	ID      json.RawMessage `json:"id,omitempty"`
+	Method  string          `json:"method,omitempty"`
+	Params  json.RawMessage `json:"params,omitempty"`
+	Error   *jsonError      `json:"error,omitempty"`
+	Result  json.RawMessage `json:"result,omitempty"`
+}
+
+func (msg *jsonrpcMessage) isNotification() bool {
+	return msg.ID == nil && msg.Method != ""
+}
+
+func (msg *jsonrpcMessage) isCall() bool {
+	return msg.hasValidID() && msg.Method != ""
+}
+
+func (msg *jsonrpcMessage) isResponse() bool {
+	return msg.hasValidID() && msg.Method == "" && msg.Params == nil && (msg.Result != nil || msg.Error != nil)
+}
+
+func (msg *jsonrpcMessage) hasValidID() bool {
+	return len(msg.ID) > 0 && msg.ID[0] != '{' && msg.ID[0] != '['
+}
+
+func (msg *jsonrpcMessage) isSubscribe() bool {
+	return strings.HasSuffix(msg.Method, subscribeMethodSuffix)
+}
+
+func (msg *jsonrpcMessage) isUnsubscribe() bool {
+	return strings.HasSuffix(msg.Method, unsubscribeMethodSuffix)
+}
+
+func (msg *jsonrpcMessage) namespace() string {
+	elem := strings.SplitN(msg.Method, serviceMethodSeparator, 2)
+	return elem[0]
+}
+
+func (msg *jsonrpcMessage) String() string {
+	b, _ := json.Marshal(msg)
+	return string(b)
+}
+
+func (msg *jsonrpcMessage) errorResponse(err error) *jsonrpcMessage {
+	resp := errorMessage(err)
+	resp.ID = msg.ID
+	return resp
+}
+
+func (msg *jsonrpcMessage) response(result interface{}) *jsonrpcMessage {
+	enc, err := json.Marshal(result)
+	if err != nil {
+		// TODO: wrap with 'internal server error'
+		return msg.errorResponse(err)
+	}
+	return &jsonrpcMessage{Version: vsn, ID: msg.ID, Result: enc}
+}
+
+func errorMessage(err error) *jsonrpcMessage {
+	msg := &jsonrpcMessage{Version: vsn, ID: null, Error: &jsonError{
+		Code:    defaultErrorCode,
+		Message: err.Error(),
+	}}
+	ec, ok := err.(Error)
+	if ok {
+		msg.Error.Code = ec.ErrorCode()
+	}
+	return msg
 }
