@@ -30,6 +30,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -44,6 +46,11 @@ const (
 const defaultErrorCode = -32000
 
 var null = json.RawMessage("null")
+
+type subscriptionResult struct {
+	ID     string          `json:"subscription"`
+	Result json.RawMessage `json:"result,omitempty"`
+}
 
 type jsonRequest struct {
 	Method  string          `json:"method"`
@@ -500,4 +507,18 @@ func errorMessage(err error) *jsonrpcMessage {
 		msg.Error.Code = ec.ErrorCode()
 	}
 	return msg
+}
+
+// parseSubscriptionName extracts the subscription name from an encoded argument array.
+func parseSubscriptionName(rawArgs json.RawMessage) (string, error) {
+	dec := json.NewDecoder(bytes.NewReader(rawArgs))
+	if tok, _ := dec.Token(); tok != json.Delim('[') {
+		return "", errors.New("non-array args")
+	}
+	v, _ := dec.Token()
+	method, ok := v.(string)
+	if !ok {
+		return "", errors.New("expected subscription name as first argument")
+	}
+	return method, nil
 }

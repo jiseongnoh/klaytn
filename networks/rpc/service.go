@@ -24,6 +24,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"unicode"
 	"unicode/utf8"
@@ -33,6 +34,7 @@ var (
 	errorType        = reflect.TypeOf((*error)(nil)).Elem()
 	contextType      = reflect.TypeOf((*context.Context)(nil)).Elem()
 	subscriptionType = reflect.TypeOf((*Subscription)(nil)).Elem()
+	stringType       = reflect.TypeOf("")
 )
 
 type serviceRegistry struct {
@@ -92,6 +94,24 @@ func (r *serviceRegistry) registerName(name string, rcvr interface{}) error {
 		}
 	}
 	return nil
+}
+
+// callback returns the callback corresponding to the given RPC method name.
+func (r *serviceRegistry) callback(method string) *callback {
+	elem := strings.SplitN(method, serviceMethodSeparator, 2)
+	if len(elem) != 2 {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.services[elem[0]].callbacks[elem[1]]
+}
+
+// subscription returns a subscription callback in the given service.
+func (r *serviceRegistry) subscription(service, name string) *callback {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.services[service].subscriptions[name]
 }
 
 // suitableCallbacks iterates over the methods of the given type. It determines if a method

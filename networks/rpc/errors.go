@@ -30,6 +30,17 @@ func (e *methodNotFoundError) Error() string {
 	return fmt.Sprintf("The method %s%s%s does not exist/is not available", e.service, serviceMethodSeparator, e.method)
 }
 
+type subscriptionNotFoundError struct {
+	namespace    string
+	subscription string
+}
+
+func (e *subscriptionNotFoundError) ErrorCode() int { return -32601 }
+
+func (e *subscriptionNotFoundError) Error() string {
+	return fmt.Sprintf("no %q subscription in %s namespace", e.subscription, e.namespace)
+}
+
 // received message isn't a valid request
 type invalidRequestError struct{ message string }
 
