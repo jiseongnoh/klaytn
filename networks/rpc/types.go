@@ -21,6 +21,7 @@
 package rpc
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 
@@ -93,8 +94,17 @@ type ServerCodec interface {
 	Write(msg interface{}) error
 	// Close underlying data stream
 	Close()
-	// Closed when underlying connection is closed
+	jsonWriter
+}
+
+// jsonWriter can write JSON messages to its underlying connection.
+// Implementations must be safe for concurrent use.
+type jsonWriter interface {
+	WriteContext(context.Context, interface{}) error
+	// Closed returns a channel which is closed when the connection is closed.
 	Closed() <-chan interface{}
+	// RemoteAddr returns the peer address of the connection.
+	RemoteAddr() string
 }
 
 type BlockNumber int64
