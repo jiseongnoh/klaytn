@@ -50,8 +50,9 @@ type service struct {
 
 // callback is a method callback which was registered in the server
 type callback struct {
-	fn          reflect.Value  // the function
-	rcvr        reflect.Value  // receiver of method
+	fn   reflect.Value // the function
+	rcvr reflect.Value // receiver of method
+	// TODO-Klaytn: replace method by fn
 	method      reflect.Method // callback
 	argTypes    []reflect.Type // input argument types
 	hasCtx      bool           // method's first argument is a context (not included in argTypes)
@@ -108,6 +109,8 @@ func suitableCallbacks(receiver reflect.Value) map[string]*callback {
 		if cb == nil {
 			continue // function invalid
 		}
+		// TODO-Klaytn: remove method assignment once method is not used
+		cb.method = method
 		name := formatName(method.Name)
 		callbacks[name] = cb
 	}
