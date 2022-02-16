@@ -77,17 +77,17 @@ var (
 
 // Server represents a RPC server
 type Server struct {
-	services serviceRegistry
-
-	run    int32
-	codecs mapset.Set
-
+	services    serviceRegistry
+	idgen       func() ID
+	run         int32
+	codecs      mapset.Set
 	wsConnCount int32
 }
 
 // NewServer will create a new server instance with no registered handlers.
 func NewServer() *Server {
 	server := &Server{
+		idgen:       NewID,
 		codecs:      mapset.NewSet(),
 		run:         1,
 		wsConnCount: 0,
