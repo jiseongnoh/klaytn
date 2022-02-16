@@ -29,8 +29,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -130,6 +128,26 @@ func NewJSONCodec(rwc io.ReadWriteCloser) ServerCodec {
 	}
 }
 
+// parseMessage parses raw bytes as a (batch of) JSON-RPC message(s). There are no error
+// checks in this function because the raw message has already been syntax-checked when it
+// is called. Any non-JSON-RPC messages in the input return the zero value of
+// jsonrpcMessage.
+func parseMessage(raw json.RawMessage) ([]*jsonrpcMessage, bool) {
+	if !isBatch(raw) {
+		msgs := []*jsonrpcMessage{{}}
+		json.Unmarshal(raw, &msgs[0])
+		return msgs, false
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.Token() // skip '['
+	var msgs []*jsonrpcMessage
+	for dec.More() {
+		msgs = append(msgs, new(jsonrpcMessage))
+		dec.Decode(&msgs[len(msgs)-1])
+	}
+	return msgs, true
+}
+
 // isBatch returns true when the first non-whitespace characters is '['
 func isBatch(msg json.RawMessage) bool {
 	for _, c := range msg {
@@ -142,8 +160,15 @@ func isBatch(msg json.RawMessage) bool {
 	return false
 }
 
-func (c *jsonCodec) Read() (msgs []*jsonrpcMessage, isBatch bool, err error) {
-	return nil, false, errors.New("jsonCodec.Read not implemented")
+func (c *jsonCodec) Read() (msg []*jsonrpcMessage, batch bool, err error) {
+	// Decode the next JSON object in the input stream.
+	// This verifies basic syntax, etc.
+	var rawmsg json.RawMessage
+	if err := c.decode(&rawmsg); err != nil {
+		return nil, false, err
+	}
+	msg, batch = parseMessage(rawmsg)
+	return msg, batch, nil
 }
 
 // ReadRequestHeaders will read new requests without parsing the arguments. It will
