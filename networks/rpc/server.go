@@ -29,7 +29,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"gopkg.in/fatih/set.v0"
+	//"gopkg.in/fatih/set.v0"
+	mapset "github.com/deckarep/golang-set"
 )
 
 const MetadataApi = "rpc"
@@ -78,9 +79,8 @@ var (
 type Server struct {
 	services serviceRegistry
 
-	run      int32
-	codecsMu sync.Mutex
-	codecs   *set.Set
+	run    int32
+	codecs mapset.Set
 
 	wsConnCount int32
 }
@@ -88,7 +88,7 @@ type Server struct {
 // NewServer will create a new server instance with no registered handlers.
 func NewServer() *Server {
 	server := &Server{
-		codecs:      set.New(),
+		codecs:      mapset.NewSet(),
 		run:         1,
 		wsConnCount: 0,
 	}
@@ -152,9 +152,7 @@ func (s *Server) serveRequest(ctx context.Context, codec ServerCodec, singleShot
 			buf = buf[:runtime.Stack(buf, false)]
 			logger.Error(string(buf))
 		}
-		s.codecsMu.Lock()
 		s.codecs.Remove(codec)
-		s.codecsMu.Unlock()
 	}()
 
 	//	ctx, cancel := context.WithCancel(context.Background())
@@ -172,13 +170,10 @@ func (s *Server) serveRequest(ctx context.Context, codec ServerCodec, singleShot
 	if options&OptionSubscriptions == OptionSubscriptions {
 		ctx = context.WithValue(ctx, notifierKey{}, newNotifier(codec))
 	}
-	s.codecsMu.Lock()
 	if atomic.LoadInt32(&s.run) != 1 { // server stopped
-		s.codecsMu.Unlock()
 		return &shutdownError{}
 	}
 	s.codecs.Add(codec)
-	s.codecsMu.Unlock()
 
 	// subscriptionCount counts and limits active subscriptions to avoid resource exhaustion
 	subscriptionCount := int32(0)
@@ -286,8 +281,6 @@ func (s *Server) ServeSingleRequest(ctx context.Context, codec ServerCodec, opti
 func (s *Server) Stop() {
 	if atomic.CompareAndSwapInt32(&s.run, 1, 0) {
 		logger.Debug("RPC Server shutdown initiatied")
-		s.codecsMu.Lock()
-		defer s.codecsMu.Unlock()
 		s.codecs.Each(func(c interface{}) bool {
 			c.(ServerCodec).Close()
 			return true
