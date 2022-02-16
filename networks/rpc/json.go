@@ -29,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -138,6 +140,10 @@ func isBatch(msg json.RawMessage) bool {
 		return c == '['
 	}
 	return false
+}
+
+func (c *jsonCodec) Read() (msgs []*jsonrpcMessage, isBatch bool, err error) {
+	return nil, false, errors.New("jsonCodec.Read not implemented")
 }
 
 // ReadRequestHeaders will read new requests without parsing the arguments. It will
