@@ -108,8 +108,12 @@ func (s *RPCService) Modules() map[string]string {
 	return modules
 }
 
-func (s *Server) GetServices() serviceRegistry {
-	return s.services
+func (s *Server) HasService(name string) bool {
+	s.services.mu.Lock()
+	defer s.services.mu.Unlock()
+
+	_, ok := s.services.services[name]
+	return ok
 }
 
 // RegisterName will create a service for the given rcvr type under the given name. When no methods on the given rcvr

@@ -156,13 +156,13 @@ func TestMainBridge_basic(t *testing.T) {
 	// Check initial status of components
 	assert.Nil(t, mBridge.blockchain)
 	assert.Nil(t, mBridge.txPool)
-	assert.Nil(t, mBridge.rpcServer.GetServices()["klay"])
+	assert.Nil(t, mBridge.rpcServer.HasService("klay"))
 
 	// Update and check MainBridge components
 	mBridge.SetComponents(comp)
 	assert.Equal(t, bc, mBridge.blockchain)
 	assert.Equal(t, txPool, mBridge.txPool)
-	assert.NotNil(t, mBridge.rpcServer.GetServices()["klay"])
+	assert.NotNil(t, mBridge.rpcServer.HasService("klay"))
 
 	// Start MainBridge and stop later
 	if err := mBridge.Start(p2p.SingleChannelServer{}); err != nil {
