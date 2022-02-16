@@ -23,7 +23,6 @@ package rpc
 import (
 	"encoding/json"
 	"reflect"
-	"sync"
 
 	"fmt"
 	"math"
@@ -31,7 +30,6 @@ import (
 
 	"github.com/klaytn/klaytn/common"
 	"github.com/klaytn/klaytn/common/hexutil"
-	"gopkg.in/fatih/set.v0"
 )
 
 // API describes the set of methods offered over the RPC interface
@@ -50,17 +48,6 @@ type serverRequest struct {
 	args          []reflect.Value
 	isUnsubscribe bool
 	err           Error
-}
-
-// Server represents a RPC server
-type Server struct {
-	services serviceRegistry
-
-	run      int32
-	codecsMu sync.Mutex
-	codecs   *set.Set
-
-	wsConnCount int32
 }
 
 // rpcRequest represents a raw incoming RPC request

@@ -74,6 +74,17 @@ var (
 	NonEthCompatible = false
 )
 
+// Server represents a RPC server
+type Server struct {
+	services serviceRegistry
+
+	run      int32
+	codecsMu sync.Mutex
+	codecs   *set.Set
+
+	wsConnCount int32
+}
+
 // NewServer will create a new server instance with no registered handlers.
 func NewServer() *Server {
 	server := &Server{
