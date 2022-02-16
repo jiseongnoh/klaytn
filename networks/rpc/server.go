@@ -77,7 +77,6 @@ var (
 // NewServer will create a new server instance with no registered handlers.
 func NewServer() *Server {
 	server := &Server{
-		services:    make(serviceRegistry),
 		codecs:      set.New(),
 		run:         1,
 		wsConnCount: 0,
@@ -99,8 +98,11 @@ type RPCService struct {
 
 // Modules returns the list of RPC services with their version number
 func (s *RPCService) Modules() map[string]string {
+	s.server.services.mu.Lock()
+	defer s.server.services.mu.Unlock()
+
 	modules := make(map[string]string)
-	for name := range s.server.services {
+	for name := range s.server.services.services {
 		modules[name] = "1.0"
 	}
 	return modules
@@ -114,46 +116,7 @@ func (s *Server) GetServices() serviceRegistry {
 // match the criteria to be either a RPC method or a subscription an error is returned. Otherwise a new service is
 // created and added to the service collection this server instance serves.
 func (s *Server) RegisterName(name string, rcvr interface{}) error {
-	if s.services == nil {
-		s.services = make(serviceRegistry)
-	}
-
-	svc := new(service)
-	svc.typ = reflect.TypeOf(rcvr)
-	rcvrVal := reflect.ValueOf(rcvr)
-
-	if name == "" {
-		return fmt.Errorf("no service name for type %s", svc.typ.String())
-	}
-	if !isExported(reflect.Indirect(rcvrVal).Type().Name()) {
-		return fmt.Errorf("%s is not exported", reflect.Indirect(rcvrVal).Type().Name())
-	}
-
-	methods, subscriptions := suitableCallbacks(rcvrVal, svc.typ)
-
-	// already a previous service register under given sname, merge methods/subscriptions
-	if regsvc, present := s.services[name]; present {
-		if len(methods) == 0 && len(subscriptions) == 0 {
-			return fmt.Errorf("Service %T doesn't have any suitable methods/subscriptions to expose", rcvr)
-		}
-		for _, m := range methods {
-			regsvc.callbacks[formatName(m.method.Name)] = m
-		}
-		for _, s := range subscriptions {
-			regsvc.subscriptions[formatName(s.method.Name)] = s
-		}
-		return nil
-	}
-
-	svc.name = name
-	svc.callbacks, svc.subscriptions = methods, subscriptions
-
-	if len(svc.callbacks) == 0 && len(svc.subscriptions) == 0 {
-		return fmt.Errorf("Service %T doesn't have any suitable methods/subscriptions to expose", rcvr)
-	}
-
-	s.services[svc.name] = svc
-	return nil
+	return s.services.registerName(name, rcvr)
 }
 
 var exeCount int64
@@ -504,7 +467,7 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 	// verify requests
 	for i, r := range reqs {
 		var ok bool
-		var svc *service
+		var svc service
 
 		if r.err != nil {
 			requests[i] = &serverRequest{id: r.id, err: r.err}
@@ -528,11 +491,14 @@ func (s *Server) readRequest(codec ServerCodec) ([]*serverRequest, bool, Error) 
 			r.service = "klay"
 		}
 
-		if svc, ok = s.services[r.service]; !ok { // rpc method isn't available
+		s.services.mu.Lock()
+		if svc, ok = s.services.services[r.service]; !ok { // rpc method isn't available
+			s.services.mu.Unlock()
 			logger.Trace("rpc: got request from unsupported API namespace", "requestedNamespaces", r.service)
 			requests[i] = &serverRequest{id: r.id, err: &methodNotFoundError{r.service, r.method}}
 			continue
 		}
+		s.services.mu.Unlock()
 
 		if r.isPubSub { // eth_subscribe, r.method contains the subscription method name
 			if callb, ok := svc.subscriptions[r.method]; ok {

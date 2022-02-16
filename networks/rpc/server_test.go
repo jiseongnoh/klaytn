@@ -83,11 +83,11 @@ func TestServerRegisterName(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	if len(server.services) != 2 {
-		t.Fatalf("Expected 2 service entries, got %d", len(server.services))
+	if len(server.services.services) != 2 {
+		t.Fatalf("Expected 2 service entries, got %d", len(server.services.services))
 	}
 
-	svc, ok := server.services["calc"]
+	svc, ok := server.services.services["calc"]
 	if !ok {
 		t.Fatalf("Expected service calc to be registered")
 	}

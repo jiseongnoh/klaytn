@@ -22,7 +22,9 @@ package rpc
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 )
@@ -33,20 +35,22 @@ var (
 	subscriptionType = reflect.TypeOf((*Subscription)(nil)).Elem()
 )
 
-type serviceRegistry map[string]*service // collection of services
-type callbacks map[string]*callback      // collection of RPC callbacks
-type subscriptions map[string]*callback  // collection of subscription callbacks
+type serviceRegistry struct {
+	mu       sync.Mutex
+	services map[string]service
+}
 
 // service represents a registered object
 type service struct {
-	name          string        // name for service
-	typ           reflect.Type  // receiver type
-	callbacks     callbacks     // registered handlers
-	subscriptions subscriptions // available subscriptions/notifications
+	name          string               // name for service
+	typ           reflect.Type         // receiver type
+	callbacks     map[string]*callback // registered handlers
+	subscriptions map[string]*callback // available subscriptions/notifications
 }
 
 // callback is a method callback which was registered in the server
 type callback struct {
+	fn          reflect.Value  // the function
 	rcvr        reflect.Value  // receiver of method
 	method      reflect.Method // callback
 	argTypes    []reflect.Type // input argument types
@@ -55,91 +59,110 @@ type callback struct {
 	isSubscribe bool           // indication if the callback is a subscription
 }
 
-// suitableCallbacks iterates over the methods of the given type. It will determine if a method satisfies the criteria
-// for a RPC callback or a subscription callback and adds it to the collection of callbacks or subscriptions. See server
-// documentation for a summary of these criteria.
-func suitableCallbacks(rcvr reflect.Value, typ reflect.Type) (callbacks, subscriptions) {
-	callbacks := make(callbacks)
-	subscriptions := make(subscriptions)
-
-METHODS:
-	for m := 0; m < typ.NumMethod(); m++ {
-		method := typ.Method(m)
-		mtype := method.Type
-		mname := formatName(method.Name)
-		if method.PkgPath != "" { // method must be exported
-			continue
-		}
-
-		var h callback
-		h.isSubscribe = isPubSub(mtype)
-		h.rcvr = rcvr
-		h.method = method
-		h.errPos = -1
-
-		firstArg := 1
-		numIn := mtype.NumIn()
-		if numIn >= 2 && mtype.In(1) == contextType {
-			h.hasCtx = true
-			firstArg = 2
-		}
-
-		if h.isSubscribe {
-			h.argTypes = make([]reflect.Type, numIn-firstArg) // skip rcvr type
-			for i := firstArg; i < numIn; i++ {
-				argType := mtype.In(i)
-				if isExportedOrBuiltinType(argType) {
-					h.argTypes[i-firstArg] = argType
-				} else {
-					continue METHODS
-				}
-			}
-
-			subscriptions[mname] = &h
-			continue METHODS
-		}
-
-		// determine method arguments, ignore first arg since it's the receiver type
-		// Arguments must be exported or builtin types
-		h.argTypes = make([]reflect.Type, numIn-firstArg)
-		for i := firstArg; i < numIn; i++ {
-			argType := mtype.In(i)
-			if !isExportedOrBuiltinType(argType) {
-				continue METHODS
-			}
-			h.argTypes[i-firstArg] = argType
-		}
-
-		// check that all returned values are exported or builtin types
-		for i := 0; i < mtype.NumOut(); i++ {
-			if !isExportedOrBuiltinType(mtype.Out(i)) {
-				continue METHODS
-			}
-		}
-
-		// when a method returns an error it must be the last returned value
-		h.errPos = -1
-		for i := 0; i < mtype.NumOut(); i++ {
-			if isErrorType(mtype.Out(i)) {
-				h.errPos = i
-				break
-			}
-		}
-
-		if h.errPos >= 0 && h.errPos != mtype.NumOut()-1 {
-			continue METHODS
-		}
-
-		switch mtype.NumOut() {
-		case 0, 1, 2:
-			if mtype.NumOut() == 2 && h.errPos == -1 { // method must one return value and 1 error
-				continue METHODS
-			}
-			callbacks[mname] = &h
-		}
+func (r *serviceRegistry) registerName(name string, rcvr interface{}) error {
+	rcvrVal := reflect.ValueOf(rcvr)
+	if name == "" {
+		return fmt.Errorf("no service name for type %s", rcvrVal.Type().String())
+	}
+	callbacks := suitableCallbacks(rcvrVal)
+	if len(callbacks) == 0 {
+		return fmt.Errorf("service %T doesn't have any suitable methods/subscriptions to expose", rcvr)
 	}
 
-	return callbacks, subscriptions
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.services == nil {
+		r.services = make(map[string]service)
+	}
+	svc, ok := r.services[name]
+	if !ok {
+		svc = service{
+			name:          name,
+			callbacks:     make(map[string]*callback),
+			subscriptions: make(map[string]*callback),
+		}
+		r.services[name] = svc
+	}
+	for name, cb := range callbacks {
+		if cb.isSubscribe {
+			svc.subscriptions[name] = cb
+		} else {
+			svc.callbacks[name] = cb
+		}
+	}
+	return nil
+}
+
+// suitableCallbacks iterates over the methods of the given type. It determines if a method
+// satisfies the criteria for a RPC callback or a subscription callback and adds it to the
+// collection of callbacks. See server documentation for a summary of these criteria.
+func suitableCallbacks(receiver reflect.Value) map[string]*callback {
+	typ := receiver.Type()
+	callbacks := make(map[string]*callback)
+	for m := 0; m < typ.NumMethod(); m++ {
+		method := typ.Method(m)
+		if method.PkgPath != "" {
+			continue // method not exported
+		}
+		cb := newCallback(receiver, method.Func)
+		if cb == nil {
+			continue // function invalid
+		}
+		name := formatName(method.Name)
+		callbacks[name] = cb
+	}
+	return callbacks
+}
+
+// newCallback turns fn (a function) into a callback object. It returns nil if the function
+// is unsuitable as an RPC callback.
+func newCallback(receiver, fn reflect.Value) *callback {
+	fntype := fn.Type()
+	c := &callback{fn: fn, rcvr: receiver, errPos: -1, isSubscribe: isPubSub(fntype)}
+	// Determine parameter types. They must all be exported or builtin types.
+	c.makeArgTypes()
+	if !allExportedOrBuiltin(c.argTypes) {
+		return nil
+	}
+	// Verify return types. The function must return at most one error
+	// and/or one other non-error value.
+	outs := make([]reflect.Type, fntype.NumOut())
+	for i := 0; i < fntype.NumOut(); i++ {
+		outs[i] = fntype.Out(i)
+	}
+	if len(outs) > 2 || !allExportedOrBuiltin(outs) {
+		return nil
+	}
+	// If an error is returned, it must be the last returned value.
+	switch {
+	case len(outs) == 1 && isErrorType(outs[0]):
+		c.errPos = 0
+	case len(outs) == 2:
+		if isErrorType(outs[0]) || !isErrorType(outs[1]) {
+			return nil
+		}
+		c.errPos = 1
+	}
+	return c
+}
+
+// makeArgTypes composes the argTypes list.
+func (c *callback) makeArgTypes() {
+	fntype := c.fn.Type()
+	// Skip receiver and context.Context parameter (if present).
+	firstArg := 0
+	if c.rcvr.IsValid() {
+		firstArg++
+	}
+	if fntype.NumIn() > firstArg && fntype.In(firstArg) == contextType {
+		c.hasCtx = true
+		firstArg++
+	}
+	// Add all remaining parameters.
+	c.argTypes = make([]reflect.Type, fntype.NumIn()-firstArg)
+	for i := firstArg; i < fntype.NumIn(); i++ {
+		c.argTypes[i-firstArg] = fntype.In(i)
+	}
 }
 
 // Is this an exported - upper case - name?
@@ -148,14 +171,19 @@ func isExported(name string) bool {
 	return unicode.IsUpper(rune)
 }
 
-// Is this type exported or a builtin?
-func isExportedOrBuiltinType(t reflect.Type) bool {
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
+// Are all those types exported or built-in?
+func allExportedOrBuiltin(types []reflect.Type) bool {
+	for _, typ := range types {
+		for typ.Kind() == reflect.Ptr {
+			typ = typ.Elem()
+		}
+		// PkgPath will be non-empty even for an exported type,
+		// so we need to check the type name as well.
+		if !isExported(typ.Name()) && typ.PkgPath() != "" {
+			return false
+		}
 	}
-	// PkgPath will be non-empty even for an exported type,
-	// so we need to check the type name as well.
-	return isExported(t.Name()) || t.PkgPath() == ""
+	return true
 }
 
 // isContextType returns an indication if the given t is of context.Context or *context.Context type
