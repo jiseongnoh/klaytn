@@ -42,24 +42,6 @@ type API struct {
 	Public    bool        // indication if the methods must be considered safe for public use
 }
 
-// callback is a method callback which was registered in the server
-type callback struct {
-	rcvr        reflect.Value  // receiver of method
-	method      reflect.Method // callback
-	argTypes    []reflect.Type // input argument types
-	hasCtx      bool           // method's first argument is a context (not included in argTypes)
-	errPos      int            // err return idx, of -1 when method cannot return error
-	isSubscribe bool           // indication if the callback is a subscription
-}
-
-// service represents a registered object
-type service struct {
-	name          string        // name for service
-	typ           reflect.Type  // receiver type
-	callbacks     callbacks     // registered handlers
-	subscriptions subscriptions // available subscriptions/notifications
-}
-
 // serverRequest is an incoming request
 type serverRequest struct {
 	id            interface{}
@@ -69,10 +51,6 @@ type serverRequest struct {
 	isUnsubscribe bool
 	err           Error
 }
-
-type serviceRegistry map[string]*service // collection of services
-type callbacks map[string]*callback      // collection of RPC callbacks
-type subscriptions map[string]*callback  // collection of subscription callbacks
 
 // Server represents a RPC server
 type Server struct {
