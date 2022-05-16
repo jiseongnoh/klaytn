@@ -44,6 +44,8 @@ func BenchmarkResendNilDereference(t *testing.B) {
 	if testing.Verbose() {
 		enableLog()
 	}
+	enableLog()
+
 	prof := profile.NewProfiler()
 
 	numTransactions := 20000

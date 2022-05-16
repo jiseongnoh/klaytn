@@ -23,7 +23,12 @@ package backends
 import (
 	"bytes"
 	"context"
+	"github.com/klaytn/klaytn/log"
+	"github.com/klaytn/klaytn/log/term"
+	"github.com/onsi/ginkgo/reporters/stenographer/support/go-colorable"
+	"io"
 	"math/big"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -38,7 +43,24 @@ import (
 	"github.com/klaytn/klaytn/params"
 )
 
+// TODO-Klaytn: To enable logging in the test code, we can use the following function.
+// This function will be moved to somewhere utility functions are located.
+func enableLog() {
+	usecolor := term.IsTty(os.Stderr.Fd()) && os.Getenv("TERM") != "dumb"
+	output := io.Writer(os.Stderr)
+	if usecolor {
+		output = colorable.NewColorableStderr()
+	}
+	glogger := log.NewGlogHandler(log.StreamHandler(output, log.TerminalFormat(usecolor)))
+	log.PrintOrigins(true)
+	log.ChangeGlobalLogLevel(glogger, log.Lvl(5))
+	glogger.Vmodule("")
+	glogger.BacktraceAt("")
+	log.Root().SetHandler(glogger)
+}
 func TestSimulatedBackend(t *testing.T) {
+	enableLog()
+
 	key, _ := crypto.GenerateKey() // nolint: gosec
 	auth := bind.NewKeyedTransactor(key)
 	genAlloc := make(blockchain.GenesisAlloc)

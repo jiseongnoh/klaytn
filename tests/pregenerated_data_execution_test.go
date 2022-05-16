@@ -41,6 +41,8 @@ func BenchmarkDataExecution_Aspen(b *testing.B) {
 
 // BenchmarkDataExecution_Baobab generates the data with Baobab network's database configurations.
 func BenchmarkDataExecution_Baobab(b *testing.B) {
+	enableLog()
+
 	tc := getExecutionTestDefaultTC()
 	tc.testName = "BenchmarkDataExecution_Baobab"
 	tc.originalDataDir = baobab500_orig

@@ -498,6 +498,7 @@ func (self *worker) commitNewWork() {
 
 	// TODO-Klaytn drop or missing tx
 	tstart := time.Now()
+	logger.Info("last block processed time", tstart)
 	tstamp := tstart.Unix()
 	if self.nodetype == common.CONSENSUSNODE {
 		ideal := time.Unix(parent.Time().Int64()+params.BlockGenerationInterval, 0)

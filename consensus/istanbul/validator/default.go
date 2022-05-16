@@ -21,6 +21,7 @@
 package validator
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"sort"
@@ -211,10 +212,12 @@ func (valSet *defaultSet) SubListWithProposer(prevHash common.Hash, proposerAddr
 	}
 
 	// select a random committee
+	fmt.Println("default.go 215: valset before selec commitee:   ", validators)
 	committee := SelectRandomCommittee(validators, committeeSize, seed, proposerIdx, nextProposerIdx)
 	if committee == nil {
 		committee = validators
 	}
+	fmt.Println("default.go 220: valset and comittee after select commitee:   ", committee, validators)
 
 	logger.Trace("composed committee", "prevHash", prevHash.Hex(), "proposerAddr", proposerAddr,
 		"committee", committee, "committee size", len(committee), "valSet.subSize", committeeSize)

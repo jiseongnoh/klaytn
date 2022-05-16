@@ -179,8 +179,8 @@ func (s *Snapshot) apply(headers []*types.Header, gov *governance.Governance, ad
 		}
 
 		if number%snap.Epoch == 0 {
-			gov.UpdateCurrentSet(number)
-			if len(header.Governance) > 0 {
+			gov.UpdateCurrentSet(number)    // 2epoch 지나야 호출됨.
+			if len(header.Governance) > 0 { //  1epoch 지날 때 committeesize 바꿀거임
 				gov.WriteGovernanceForNextEpoch(number, header.Governance)
 			}
 			gov.ClearVotes(number)

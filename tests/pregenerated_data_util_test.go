@@ -491,8 +491,10 @@ func generateGovernaceDataForTest() *governance.Governance {
 	dbm := database.NewDBManager(&database.DBConfig{DBType: database.MemoryDB})
 
 	return governance.NewGovernanceInitialize(&params.ChainConfig{
-		ChainID:       big.NewInt(2018),
-		UnitPrice:     25000000000,
+		ChainID: big.NewInt(2018),
+		//UnitPrice:     25000000000,
+		UnitPrice: 750000000000,
+
 		DeriveShaImpl: 0,
 		Istanbul: &params.IstanbulConfig{
 			Epoch:          istanbul.DefaultConfig.Epoch,

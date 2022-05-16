@@ -48,6 +48,7 @@ func TestValidateSenderContract(t *testing.T) {
 	if testing.Verbose() {
 		enableLog()
 	}
+	enableLog()
 
 	// Initialize blockchain
 	start := time.Now()

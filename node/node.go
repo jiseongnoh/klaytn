@@ -181,6 +181,7 @@ func (n *Node) Start() error {
 	if n.serverConfig.StaticNodes == nil {
 		n.serverConfig.StaticNodes = n.config.StaticNodes()
 	}
+	fmt.Println("staticnodes : ", n.serverConfig.StaticNodes)
 	if n.serverConfig.TrustedNodes == nil {
 		n.serverConfig.TrustedNodes = n.config.TrustedNodes()
 	}
@@ -215,6 +216,7 @@ func (n *Node) Start() error {
 	if err := p2pServer.Start(); err != nil {
 		return convertFileLockError(err)
 	}
+	fmt.Println("p2pserver started")
 
 	// Start each of the coreservices
 	coreStarted := []reflect.Type{}

@@ -22,8 +22,12 @@ package downloader
 
 import (
 	"fmt"
+	"github.com/klaytn/klaytn/log/term"
+	"github.com/mattn/go-colorable"
+	"io"
 	"math/big"
 	"math/rand"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -100,6 +104,7 @@ func dummyPeer(id string) *peerConnection {
 }
 
 func TestBasics(t *testing.T) {
+	enableLog()
 	numOfBlocks := len(emptyChain.blocks)
 	numOfReceipts := len(emptyChain.blocks) / 2
 
@@ -256,13 +261,31 @@ func TestEmptyBlocks(t *testing.T) {
 	}
 }
 
+// TODO-Klaytn: To enable logging in the test code, we can use the following function.
+// This function will be moved to somewhere utility functions are located.
+func enableLog() {
+	usecolor := term.IsTty(os.Stderr.Fd()) && os.Getenv("TERM") != "dumb"
+	output := io.Writer(os.Stderr)
+	if usecolor {
+		output = colorable.NewColorableStderr()
+	}
+	glogger := log.NewGlogHandler(log.StreamHandler(output, log.TerminalFormat(usecolor)))
+	log.PrintOrigins(true)
+	log.ChangeGlobalLogLevel(glogger, log.Lvl(3))
+	glogger.Vmodule("")
+	glogger.BacktraceAt("")
+	log.Root().SetHandler(glogger)
+}
+
 // XTestDelivery does some more extensive testing of events that happen,
 // blocks that become known and peers that make reservations and deliveries.
 // disabled since it's not really a unit-test, but can be executed to test
 // some more advanced scenarios
-func XTestDelivery(t *testing.T) {
+func TestXTestDelivery(t *testing.T) {
+	enableLog()
+
 	// the outside network, holding blocks
-	blo, rec := makeChain(128, 0, genesis, false)
+	blo, rec := makeChain(4, 0, genesis, false)
 	world := newNetwork()
 	world.receipts = rec
 	world.chain = blo
@@ -416,7 +439,7 @@ func (n *network) forget(blocknum uint64) {
 func (n *network) progress(numBlocks int) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
-	//fmt.Printf("progressing...\n")
+	fmt.Printf("progressing...\n")
 	newBlocks, newR := makeChain(numBlocks, 0, n.chain[len(n.chain)-1], false)
 	n.chain = append(n.chain, newBlocks...)
 	n.receipts = append(n.receipts, newR...)

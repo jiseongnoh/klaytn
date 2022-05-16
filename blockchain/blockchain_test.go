@@ -24,8 +24,13 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"github.com/klaytn/klaytn/log"
+	"github.com/klaytn/klaytn/log/term"
+	"github.com/onsi/ginkgo/reporters/stenographer/support/go-colorable"
+	"io"
 	"math/big"
 	"math/rand"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -321,6 +326,8 @@ func TestEqualForkHeaders(t *testing.T) { testEqualFork(t, false) }
 func TestEqualForkBlocks(t *testing.T)  { testEqualFork(t, true) }
 
 func testEqualFork(t *testing.T, full bool) {
+	enableLog() // Change verbosity level in the function if needed
+
 	length := 10
 
 	// Make first chain starting from genesis
@@ -609,6 +616,22 @@ func testInsertNonceError(t *testing.T, full bool) {
 	}
 }
 
+// TODO-Klaytn: To enable logging in the test code, we can use the following function.
+// This function will be moved to somewhere utility functions are located.
+func enableLog() {
+	usecolor := term.IsTty(os.Stderr.Fd()) && os.Getenv("TERM") != "dumb"
+	output := io.Writer(os.Stderr)
+	if usecolor {
+		output = colorable.NewColorableStderr()
+	}
+	glogger := log.NewGlogHandler(log.StreamHandler(output, log.TerminalFormat(usecolor)))
+	log.PrintOrigins(true)
+	log.ChangeGlobalLogLevel(glogger, log.Lvl(3))
+	glogger.Vmodule("")
+	glogger.BacktraceAt("")
+	log.Root().SetHandler(glogger)
+}
+
 // Tests that fast importing a block chain produces the same chain data as the
 // classical full block processing.
 func TestFastVsFullChains(t *testing.T) {
@@ -625,6 +648,8 @@ func TestFastVsFullChains(t *testing.T) {
 		genesis = gspec.MustCommit(gendb)
 		signer  = types.LatestSignerForChainID(gspec.Config.ChainID)
 	)
+	enableLog()
+
 	blocks, receipts := GenerateChain(gspec.Config, genesis, gxhash.NewFaker(), gendb, 1024, func(i int, block *BlockGen) {
 		// If the block number is multiple of 3, send a few bonus transactions to the miner
 		if i%3 == 2 {

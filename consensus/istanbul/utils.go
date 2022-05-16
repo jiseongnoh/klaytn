@@ -21,6 +21,7 @@
 package istanbul
 
 import (
+	"fmt"
 	"github.com/klaytn/klaytn/common"
 	"github.com/klaytn/klaytn/crypto"
 	"github.com/klaytn/klaytn/crypto/sha3"
@@ -59,8 +60,11 @@ func CheckValidatorSignature(valSet ValidatorSet, data []byte, sig []byte) (comm
 
 	// 2. Check validator
 	if _, val := valSet.GetByAddress(signer); val != nil {
+
 		return val.Address(), nil
 	}
+	fmt.Println("consensus/istanbul/util.go:63 getbyaddress error")
+	fmt.Println("validator set list: ", valSet.List())
 
 	return common.Address{}, ErrUnauthorizedAddress
 }

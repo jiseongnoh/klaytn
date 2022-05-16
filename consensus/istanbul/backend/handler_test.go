@@ -17,6 +17,7 @@
 package backend
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -30,9 +31,17 @@ import (
 )
 
 func TestBackend_HandleMsg(t *testing.T) {
-	_, backend := newBlockChain(1)
+	enableLog()
+	_, backend := newBlockChain(4)
+	//_, backend2 := newBlockChain(4)
+	//_, backend3 := newBlockChain(4)
+
 	defer backend.Stop()
+	//defer backend2.Stop()
+	//defer backend3.Stop()
 	eventSub := backend.istanbulEventMux.Subscribe(istanbul.MessageEvent{})
+	//eventSub2 := backend2.istanbulEventMux.Subscribe(istanbul.MessageEvent{})
+	//eventSub3 := backend2.istanbulEventMux.Subscribe(istanbul.MessageEvent{})
 
 	addr := common.StringToAddress("test addr")
 	data := &istanbul.ConsensusMsg{
@@ -44,14 +53,33 @@ func TestBackend_HandleMsg(t *testing.T) {
 
 	// Success case
 	{
+		fmt.Println("success case")
 		msg := p2p.Msg{
 			Code:    IstanbulMsg,
 			Size:    uint32(size),
 			Payload: payload,
 		}
+		//msg2 := p2p.Msg{
+		//	Code:    IstanbulMsg,
+		//	Size:    uint32(size),
+		//	Payload: payload,
+		//}
+		//msg3 := p2p.Msg{
+		//	Code:    IstanbulMsg,
+		//	Size:    uint32(size),
+		//	Payload: payload,
+		//}
 		isHandled, err := backend.HandleMsg(addr, msg)
 		assert.Nil(t, err)
 		assert.True(t, isHandled)
+
+		//isHandled2, err := backend2.HandleMsg(addr, msg2)
+		//assert.Nil(t, err)
+		//assert.True(t, isHandled2)
+		//
+		//isHandled3, err := backend3.HandleMsg(addr, msg3)
+		//assert.Nil(t, err)
+		//assert.True(t, isHandled3)
 
 		if err != nil {
 			t.Fatalf("handle message failed: %v", err)
@@ -60,22 +88,37 @@ func TestBackend_HandleMsg(t *testing.T) {
 		recentMsg, ok := backend.recentMessages.Get(addr)
 		assert.True(t, ok)
 
+		//recentMsg2, ok := backend2.recentMessages.Get(addr)
+		//assert.True(t, ok)
+
 		cachedMsg, ok := recentMsg.(*lru.ARCCache)
 		assert.True(t, ok)
+
+		//cachedMsg2, ok := recentMsg2.(*lru.ARCCache)
+		//assert.True(t, ok)
 
 		value, ok := cachedMsg.Get(hash)
 		assert.True(t, ok)
 		assert.True(t, value.(bool))
 
+		//value2, ok := cachedMsg2.Get(hash)
+		//assert.True(t, ok)
+		//assert.True(t, value2.(bool))
+
 		value, ok = backend.knownMessages.Get(hash)
 		assert.True(t, ok)
 		assert.True(t, value.(bool))
+
+		//value2, ok = backend2.knownMessages.Get(hash)
+		//assert.True(t, ok)
+		//assert.True(t, value2.(bool))
 
 		evTimer := time.NewTimer(3 * time.Second)
 		defer evTimer.Stop()
 
 		select {
 		case event := <-eventSub.Chan():
+			fmt.Println("event 1")
 			switch ev := event.Data.(type) {
 			case istanbul.MessageEvent:
 				assert.Equal(t, data.Payload, ev.Payload)
@@ -83,6 +126,26 @@ func TestBackend_HandleMsg(t *testing.T) {
 			default:
 				t.Fatal("unexpected message type")
 			}
+		//case event2 := <-eventSub2.Chan():
+		//	fmt.Println("event 2")
+		//
+		//	switch ev := event2.Data.(type) {
+		//	case istanbul.MessageEvent:
+		//		assert.Equal(t, data.Payload, ev.Payload)
+		//		assert.Equal(t, data.PrevHash, ev.Hash)
+		//	default:
+		//		t.Fatal("unexpected message type")
+		//	}
+		//case event3 := <-eventSub3.Chan():
+		//	fmt.Println("event 3")
+		//
+		//	switch ev := event3.Data.(type) {
+		//	case istanbul.MessageEvent:
+		//		assert.Equal(t, data.Payload, ev.Payload)
+		//		assert.Equal(t, data.PrevHash, ev.Hash)
+		//	default:
+		//		t.Fatal("unexpected message type")
+		//	}
 		case <-evTimer.C:
 			t.Fatal("failed to subscribe istanbul message event")
 		}
@@ -98,6 +161,10 @@ func TestBackend_HandleMsg(t *testing.T) {
 		isHandled, err := backend.HandleMsg(addr, msg)
 		assert.Equal(t, nil, err)
 		assert.False(t, isHandled)
+		//isHandled2, err := backend2.HandleMsg(addr, msg)
+		//assert.Equal(t, nil, err)
+		//assert.False(t, isHandled2)
+
 	}
 
 	// Failure case - invalid message data
@@ -111,6 +178,9 @@ func TestBackend_HandleMsg(t *testing.T) {
 		isHandled, err := backend.HandleMsg(addr, msg)
 		assert.Equal(t, errDecodeFailed, err)
 		assert.True(t, isHandled)
+		//isHandled2, err := backend2.HandleMsg(addr, msg)
+		//assert.Equal(t, errDecodeFailed, err)
+		//assert.True(t, isHandled2)
 	}
 
 	// Failure case - stopped istanbul engine
@@ -124,6 +194,10 @@ func TestBackend_HandleMsg(t *testing.T) {
 		isHandled, err := backend.HandleMsg(addr, msg)
 		assert.Equal(t, istanbul.ErrStoppedEngine, err)
 		assert.True(t, isHandled)
+		//_ = backend2.Stop()
+		//isHandled2, err := backend2.HandleMsg(addr, msg)
+		//assert.Equal(t, istanbul.ErrStoppedEngine, err)
+		//assert.True(t, isHandled2)
 	}
 }
 

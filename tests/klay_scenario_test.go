@@ -1439,6 +1439,8 @@ func TestFeeDelegatedAccountUpdateWithRatio(t *testing.T) {
 	if testing.Verbose() {
 		enableLog()
 	}
+	enableLog()
+
 	prof := profile.NewProfiler()
 
 	// Initialize blockchain

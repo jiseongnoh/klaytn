@@ -21,6 +21,7 @@
 package core
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/klaytn/klaytn/consensus/istanbul"
@@ -28,11 +29,12 @@ import (
 
 func (c *core) sendPrepare() {
 	logger := c.logger.NewWith("state", c.state)
+	fmt.Println("mock send prepare")
 
 	sub := c.current.Subject()
 	prevHash := c.current.Proposal().ParentHash()
 
-	// Do not send message if the owner of the core is not a member of the committee for the `sub.View`
+	// Do not send message if the owner of the core is not a member of the committee for the `sub.View`  <- c.current
 	if !c.valSet.CheckInSubList(prevHash, sub.View, c.Address()) {
 		return
 	}
@@ -52,6 +54,8 @@ func (c *core) sendPrepare() {
 
 func (c *core) handlePrepare(msg *message, src istanbul.Validator) error {
 	// Decode PREPARE message
+	fmt.Println("mock handle prepare")
+
 	var prepare *istanbul.Subject
 	err := msg.Decode(&prepare)
 	if err != nil {

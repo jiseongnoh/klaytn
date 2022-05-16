@@ -17,6 +17,7 @@
 package blockchain
 
 import (
+	"github.com/klaytn/klaytn/consensus/istanbul"
 	"testing"
 
 	"github.com/klaytn/klaytn/blockchain/types"
@@ -117,7 +118,9 @@ func testLongDeepSetHead(t *testing.T, snapshots bool) {
 	})
 }
 func testSetHead(t *testing.T, tt *rewindTest) {
-	db, chain, err := newCanonical(gxhash.NewFullFaker(), 0, true)
+	//db, chain, err := newCanonical(gxhash.NewFullFaker(), 0, true)
+	db, chain, err := newCanonical(istanbul.Backend(), 0, true)
+
 	if err != nil {
 		t.Fatalf("failed to create pristine chain: %v", err)
 	}

@@ -54,6 +54,7 @@ func TestNetworkSimulation(t *testing.T) {
 			t.Fatalf("error starting node: %s", err)
 		}
 		ids[i] = node.ID()
+		fmt.Println("node id = ", ids[i])
 	}
 
 	// perform a check which connects the nodes in a ring (so each node is

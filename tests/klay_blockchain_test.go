@@ -18,6 +18,8 @@ package tests
 
 import (
 	"crypto/ecdsa"
+	"fmt"
+	"github.com/klaytn/klaytn/networks/p2p"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -30,7 +32,6 @@ import (
 	"github.com/klaytn/klaytn/common"
 	"github.com/klaytn/klaytn/consensus/istanbul"
 	"github.com/klaytn/klaytn/crypto"
-	"github.com/klaytn/klaytn/networks/p2p"
 	"github.com/klaytn/klaytn/node"
 	"github.com/klaytn/klaytn/node/cn"
 	"github.com/klaytn/klaytn/params"
@@ -45,10 +46,18 @@ func TestSimpleBlockchain(t *testing.T) {
 	//if testing.Verbose() {
 	//	enableLog() // Change verbosity level in the function if needed
 	//}
+	enableLog() // Change verbosity level in the function if needed
 
 	numAccounts := 12
-	fullNode, node, validator, chainId, workspace := newBlockchain(t)
+	fullNode, node, validator, chainId, workspace := newBlockchain3(t)
+	fullNode2, node2, validator, chainId, workspace2 := newBlockchain3(t)
+	fullNode3, node3, validator, chainId, workspace3 := newBlockchain4(t)
+	fullNode4, node4, validator, chainId, workspace4 := newBlockchain5(t)
+
 	defer os.RemoveAll(workspace)
+	defer os.RemoveAll(workspace2)
+	defer os.RemoveAll(workspace3)
+	defer os.RemoveAll(workspace4)
 
 	// create account
 	richAccount, accounts, contractAccounts := createAccount(t, numAccounts, validator)
@@ -72,18 +81,60 @@ func TestSimpleBlockchain(t *testing.T) {
 	if err := fullNode.Stop(); err != nil {
 		t.Fatal(err)
 	}
+	if err := fullNode2.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if err := fullNode3.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if err := fullNode4.Stop(); err != nil {
+		t.Fatal(err)
+	}
 	time.Sleep(2 * time.Second)
 
 	// start full node with previous db
-	fullNode, node, err := newKlaytnNode(t, workspace, validator)
+	fullNode, node, err := newKlaytnNode2(t, workspace, validator, 40001)
 	assert.NoError(t, err)
 	if err := node.StartMining(false); err != nil {
+		t.Fatal()
+	}
+	time.Sleep(2 * time.Second)
+	// start full node with previous db
+	fullNode2, node2, err2 := newKlaytnNode2(t, workspace2, validator, 40002)
+	assert.NoError(t, err2)
+	if err := node2.StartMining(false); err != nil {
+		t.Fatal()
+	}
+
+	// start full node with previous db
+	fullNode3, node3, err3 := newKlaytnNode2(t, workspace, validator, 40003)
+	assert.NoError(t, err3)
+	if err := node3.StartMining(false); err != nil {
+		t.Fatal()
+	}
+	time.Sleep(2 * time.Second)
+	// start full node with previous db
+	fullNode4, node4, err4 := newKlaytnNode2(t, workspace, validator, 40004)
+	assert.NoError(t, err4)
+	if err := node4.StartMining(false); err != nil {
 		t.Fatal()
 	}
 	time.Sleep(2 * time.Second)
 
 	// stop node before ending the test code
 	if err := fullNode.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	// stop node before ending the test code
+	if err := fullNode2.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	// stop node before ending the test code
+	if err := fullNode3.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	// stop node before ending the test code
+	if err := fullNode4.Stop(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -106,6 +157,125 @@ func newBlockchain(t *testing.T) (*node.Node, *cn.CN, *TestAccountType, *big.Int
 	// Create a Klaytn node
 	fullNode, node, err := newKlaytnNode(t, workspace, validator)
 	assert.NoError(t, err)
+	if err := node.StartMining(false); err != nil {
+		t.Fatal()
+	}
+	time.Sleep(2 * time.Second) // wait for initializing mining
+
+	chainId := node.BlockChain().Config().ChainID
+
+	return fullNode, node, validator, chainId, workspace
+}
+
+func newBlockchain2(t *testing.T, privkey int64) (*node.Node, *cn.CN, *TestAccountType, *big.Int, string) {
+	t.Log("Create a new blockchain")
+	// Prepare workspace
+	workspace, err := ioutil.TempDir("", "klaytn-test2-state")
+	if err != nil {
+		t.Fatalf("failed to create temporary keystore: %v", err)
+	}
+	t.Log("Workspace is ", workspace)
+
+	// Prepare a validator
+	validator, err := createAnonymousAccount(getRandomPrivateKeyString(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a Klaytn node
+	fullNode, node, err := newKlaytnNode2(t, workspace, validator, 40001)
+	assert.NoError(t, err)
+	fmt.Println("a node created, port: 40001")
+	if err := node.StartMining(false); err != nil {
+		t.Fatal()
+	}
+	time.Sleep(2 * time.Second) // wait for initializing mining
+
+	chainId := node.BlockChain().Config().ChainID
+
+	return fullNode, node, validator, chainId, workspace
+}
+
+func newBlockchain3(t *testing.T) (*node.Node, *cn.CN, *TestAccountType, *big.Int, string) {
+	t.Log("Create a new blockchain")
+	// Prepare workspace
+	workspace, err := ioutil.TempDir("", "klaytn-test2-state")
+	if err != nil {
+		t.Fatalf("failed to create temporary keystore: %v", err)
+	}
+	t.Log("Workspace is ", workspace)
+
+	// Prepare a validator
+	validator, err := createAnonymousAccount(getRandomPrivateKeyString(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a Klaytn node
+	fullNode, node, err := newKlaytnNode2(t, workspace, validator, 40002)
+	assert.NoError(t, err)
+	fmt.Println("a node created, port: 40002")
+
+	if err := node.StartMining(false); err != nil {
+		t.Fatal()
+	}
+	time.Sleep(2 * time.Second) // wait for initializing mining
+
+	chainId := node.BlockChain().Config().ChainID
+
+	return fullNode, node, validator, chainId, workspace
+}
+
+func newBlockchain4(t *testing.T) (*node.Node, *cn.CN, *TestAccountType, *big.Int, string) {
+	t.Log("Create a new blockchain")
+	// Prepare workspace
+	workspace, err := ioutil.TempDir("", "klaytn-test3-state")
+	if err != nil {
+		t.Fatalf("failed to create temporary keystore: %v", err)
+	}
+	t.Log("Workspace is ", workspace)
+
+	// Prepare a validator
+	validator, err := createAnonymousAccount(getRandomPrivateKeyString(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a Klaytn node
+	fullNode, node, err := newKlaytnNode2(t, workspace, validator, 40003)
+	assert.NoError(t, err)
+	fmt.Println("a node created, port: 40003")
+
+	if err := node.StartMining(false); err != nil {
+		t.Fatal()
+	}
+	time.Sleep(2 * time.Second) // wait for initializing mining
+
+	chainId := node.BlockChain().Config().ChainID
+
+	return fullNode, node, validator, chainId, workspace
+}
+
+func newBlockchain5(t *testing.T) (*node.Node, *cn.CN, *TestAccountType, *big.Int, string) {
+	t.Log("Create a new blockchain")
+	// Prepare workspace
+	workspace, err := ioutil.TempDir("", "klaytn-test4-state")
+	if err != nil {
+		t.Fatalf("failed to create temporary keystore: %v", err)
+	}
+	t.Log("Workspace is ", workspace)
+
+	// Prepare a validator
+	validator, err := createAnonymousAccount(getRandomPrivateKeyString(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a Klaytn node
+	fullNode, node, err := newKlaytnNode2(t, workspace, validator, 40004)
+	assert.NoError(t, err)
+	fmt.Println("a node created, port: 40004")
+
 	if err := node.StartMining(false); err != nil {
 		t.Fatal()
 	}
@@ -149,6 +319,60 @@ func newKlaytnNode(t *testing.T, dir string, validator *TestAccountType) (*node.
 		DataDir:           dir,
 		UseLightweightKDF: true,
 		P2P:               p2p.Config{PrivateKey: validator.Keys[0], NoListen: true},
+	})
+	if err != nil {
+		t.Fatalf("failed to create node: %v", err)
+	}
+
+	istanbulConfData, err := rlp.EncodeToBytes(&types.IstanbulExtra{
+		Validators:    []common.Address{validator.Addr},
+		Seal:          []byte{},
+		CommittedSeal: [][]byte{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	genesis := blockchain.DefaultGenesisBlock()
+	genesis.ExtraData = genesis.ExtraData[:types.IstanbulExtraVanity]
+	genesis.ExtraData = append(genesis.ExtraData, istanbulConfData...)
+	genesis.Config.Istanbul.SubGroupSize = 1
+	genesis.Config.Istanbul.ProposerPolicy = uint64(istanbul.RoundRobin)
+	genesis.Config.Governance.Reward.MintingAmount = new(big.Int).Mul(big.NewInt(9000000000000000000), big.NewInt(params.KLAY))
+
+	cnConf := cn.GetDefaultConfig()
+	cnConf.Genesis = genesis
+	cnConf.Rewardbase = validator.Addr
+	cnConf.SingleDB = false
+	cnConf.NumStateTrieShards = 4
+
+	ks := fullNode.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
+	_, _ = ks.ImportECDSA(validator.Keys[0], "") // import a node key
+
+	if err = fullNode.Register(func(ctx *node.ServiceContext) (node.Service, error) { return cn.New(ctx, cnConf) }); err != nil {
+		return nil, nil, errors.WithMessage(err, "failed to register Klaytn protocol")
+	}
+
+	if err = fullNode.Start(); err != nil {
+		return nil, nil, errors.WithMessage(err, "failed to start test fullNode")
+	}
+
+	if err := fullNode.Service(&klaytnNode); err != nil {
+		return nil, nil, err
+	}
+
+	return fullNode, klaytnNode, nil
+}
+
+// newKlaytnNode creates a klaytn node
+func newKlaytnNode2(t *testing.T, dir string, validator *TestAccountType, listenAddr int) (*node.Node, *cn.CN, error) {
+	var klaytnNode *cn.CN
+
+	fullNode, err := node.New(&node.Config{
+		DataDir:           dir,
+		UseLightweightKDF: true,
+		//P2P:               p2p.Config{PrivateKey: validator.Keys[0], NoListen: true},
+		P2P: p2p.Config{PrivateKey: validator.Keys[0], ListenAddr: fmt.Sprintf(":%d", listenAddr)},
 	})
 	if err != nil {
 		t.Fatalf("failed to create node: %v", err)

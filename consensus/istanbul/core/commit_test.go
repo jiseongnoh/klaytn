@@ -13,6 +13,7 @@ import (
 )
 
 func TestCore_sendCommit(t *testing.T) {
+	enableLog()
 	fork.SetHardForkBlockNumberConfig(&params.ChainConfig{})
 	defer fork.ClearHardForkBlockNumberConfig()
 
@@ -33,11 +34,16 @@ func TestCore_sendCommit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	//istCore.sendPreprepare(proposal)
 
 	istCore.current.Preprepare = &istanbul.Preprepare{
 		View:     istCore.currentView(),
 		Proposal: proposal,
 	}
+	//istCore.sendPreprepare(proposal)
+	//&istanbul.Request{
+	//	Proposal: ev.Proposal,
+	//}
 
 	mockCtrl.Finish()
 
@@ -55,6 +61,9 @@ func TestCore_sendCommit(t *testing.T) {
 		mockBackend.EXPECT().Broadcast(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 
 		istCore.backend = mockBackend
+
+		istCore.sendPrepare()
+
 		istCore.sendCommit()
 
 		// methods of mockBackend should be executed given times

@@ -17,7 +17,12 @@
 package cn
 
 import (
+	"github.com/klaytn/klaytn/log"
+	"github.com/klaytn/klaytn/log/term"
+	"github.com/mattn/go-colorable"
+	"io"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -228,6 +233,7 @@ func TestPeerSet_PeersWithoutBlock(t *testing.T) {
 }
 
 func TestPeerSet_PeersWithoutTx(t *testing.T) {
+
 	peerSet := newPeerSet()
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
@@ -358,6 +364,22 @@ func TestPeerSet_Close(t *testing.T) {
 	assert.False(t, peerSet.closed)
 	peerSet.Close()
 	assert.True(t, peerSet.closed)
+}
+
+// TODO-Klaytn: To enable logging in the test code, we can use the following function.
+// This function will be moved to somewhere utility functions are located.
+func enableLog() {
+	usecolor := term.IsTty(os.Stderr.Fd()) && os.Getenv("TERM") != "dumb"
+	output := io.Writer(os.Stderr)
+	if usecolor {
+		output = colorable.NewColorableStderr()
+	}
+	glogger := log.NewGlogHandler(log.StreamHandler(output, log.TerminalFormat(usecolor)))
+	log.PrintOrigins(true)
+	log.ChangeGlobalLogLevel(glogger, log.Lvl(5))
+	glogger.Vmodule("")
+	glogger.BacktraceAt("")
+	log.Root().SetHandler(glogger)
 }
 
 func TestPeerSet_SampleResendPeersByType_PN(t *testing.T) {
@@ -586,6 +608,7 @@ func TestPeerSet_SampleResendPeersByType_EN(t *testing.T) {
 }
 
 func TestPeerSet_SampleResendPeersByType_Default(t *testing.T) {
+
 	peerSet := newPeerSet()
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()

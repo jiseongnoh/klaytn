@@ -25,6 +25,8 @@ import (
 )
 
 func TestRLP(t *testing.T) {
+	enableLog()
+
 	t.Parallel()
 	tm := new(testMatcher)
 	tm.walk(t, rlpTestDir, func(t *testing.T, name string, test *RLPTest) {

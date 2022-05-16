@@ -18,7 +18,12 @@ package sc
 
 import (
 	"fmt"
+	"github.com/klaytn/klaytn/log"
+	"github.com/klaytn/klaytn/log/term"
+	"github.com/onsi/ginkgo/reporters/stenographer/support/go-colorable"
+	"io"
 	"math/big"
+	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -121,8 +126,26 @@ func TestCreateDB(t *testing.T) {
 	assert.Equal(t, database.LevelDB, dbConfig.DBType)
 }
 
+// TODO-Klaytn: To enable logging in the test code, we can use the following function.
+// This function will be moved to somewhere utility functions are located.
+func enableLog() {
+	usecolor := term.IsTty(os.Stderr.Fd()) && os.Getenv("TERM") != "dumb"
+	output := io.Writer(os.Stderr)
+	if usecolor {
+		output = colorable.NewColorableStderr()
+	}
+	glogger := log.NewGlogHandler(log.StreamHandler(output, log.TerminalFormat(usecolor)))
+	log.PrintOrigins(true)
+	log.ChangeGlobalLogLevel(glogger, log.Lvl(5))
+	glogger.Vmodule("")
+	glogger.BacktraceAt("")
+	log.Root().SetHandler(glogger)
+}
+
 // TestMainBridge_basic tests some getters and basic operation of MainBridge.
 func TestMainBridge_basic(t *testing.T) {
+	enableLog()
+
 	// Create a test MainBridge
 	mBridge := testNewMainBridge(t)
 
@@ -201,6 +224,7 @@ func TestMainBridge_removePeer(t *testing.T) {
 
 // TestMainBridge_handleMsg fails when a bridgePeer fails to read a message or reads a too long message.
 func TestMainBridge_handleMsg(t *testing.T) {
+	enableLog()
 	// Create a MainBridge
 	mBridge := testNewMainBridge(t)
 	defer mBridge.chainDB.Close()
@@ -257,6 +281,7 @@ func TestMainBridge_handleMsg(t *testing.T) {
 // TestMainBridge_handle tests the fail cases of `handle` function.
 // There are no success cases in this test since `handle` has a infinite loop inside.
 func TestMainBridge_handle(t *testing.T) {
+	enableLog()
 	// Create a MainBridge
 	mBridge := testNewMainBridge(t)
 	defer mBridge.chainDB.Close()

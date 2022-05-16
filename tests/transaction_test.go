@@ -34,6 +34,8 @@ import (
 )
 
 func TestTransaction(t *testing.T) {
+	enableLog()
+
 	t.Parallel()
 
 	txt := new(testMatcher)

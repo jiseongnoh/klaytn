@@ -134,7 +134,7 @@ func (sb *backend) GetRewardBase() common.Address {
 	return sb.rewardbase
 }
 
-func (sb *backend) GetSubGroupSize() uint64 {
+func (sb *backend) GetSubGroupSize() uint64 { // no one calls this func?
 	return sb.governance.CommitteeSize()
 }
 

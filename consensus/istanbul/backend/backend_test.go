@@ -24,7 +24,12 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/klaytn/klaytn/log"
+	"github.com/klaytn/klaytn/log/term"
+	"github.com/onsi/ginkgo/reporters/stenographer/support/go-colorable"
+	"io"
 	"math/big"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -701,6 +706,11 @@ func Benchmark_getTargetReceivers(b *testing.B) {
 
 // Test_GossipSubPeerTargets checks if the gossiping targets are same as council members
 func Test_GossipSubPeerTargets(t *testing.T) {
+
+	/// test only
+	enableLog()
+	/// delete this after finishing test
+
 	// get testing node's address
 	key, _ := crypto.HexToECDSA(PRIVKEY) // This key is to be provided to create backend
 
@@ -718,7 +728,7 @@ func Test_GossipSubPeerTargets(t *testing.T) {
 	// from 5 to 100: after istanbul hard fork
 	for i := int64(0); i < maxBlockNum; i++ {
 		// Test for round 0 to round 14
-		for round := int64(0); round < 15; round++ {
+		for round := int64(0); round < 3; round++ {
 			backend.currentView.Store(&istanbul.View{Sequence: big.NewInt(i), Round: big.NewInt(round)})
 			valSet.SetBlockNum(uint64(i))
 			valSet.CalcProposer(valSet.GetProposer().Address(), uint64(round))
@@ -866,6 +876,9 @@ func TestSign(t *testing.T) {
 }
 
 func TestCheckSignature(t *testing.T) {
+	/// test only
+	enableLog()
+	/// delete this after finishing test
 	b := newTestBackend()
 
 	// testAddr is derived from testPrivateKey.
@@ -931,7 +944,28 @@ func TestCheckValidatorSignature(t *testing.T) {
 	}
 }
 
+// TODO-Klaytn: To enable logging in the test code, we can use the following function.
+// This function will be moved to somewhere utility functions are located.
+func enableLog() {
+	usecolor := term.IsTty(os.Stderr.Fd()) && os.Getenv("TERM") != "dumb"
+	output := io.Writer(os.Stderr)
+	if usecolor {
+		output = colorable.NewColorableStderr()
+	}
+	glogger := log.NewGlogHandler(log.StreamHandler(output, log.TerminalFormat(usecolor)))
+	log.PrintOrigins(true)
+	log.ChangeGlobalLogLevel(glogger, log.Lvl(3))
+	glogger.Vmodule("")
+	glogger.BacktraceAt("")
+	log.Root().SetHandler(glogger)
+}
+
 func TestCommit(t *testing.T) {
+
+	/// test only
+	enableLog()
+	/// delete this after finishing test
+
 	backend := newTestBackend()
 
 	commitCh := make(chan *types.Block)
@@ -946,7 +980,9 @@ func TestCommit(t *testing.T) {
 			nil,
 			[][]byte{append([]byte{1}, bytes.Repeat([]byte{0x00}, types.IstanbulExtraSeal-1)...)},
 			func() *types.Block {
-				chain, engine := newBlockChain(1)
+				//chain, engine := newBlockChain(1)
+				chain, engine := newBlockChain(4)
+
 				defer engine.Stop()
 
 				block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
@@ -973,9 +1009,13 @@ func TestCommit(t *testing.T) {
 		expBlock := test.expectedBlock()
 		go func() {
 			select {
+
 			case result := <-backend.commitCh:
+				fmt.Println("commitchannel 11")
 				commitCh <- result.Block
 				return
+			default:
+				fmt.Println("result::::: ", backend)
 			}
 		}()
 

@@ -27,9 +27,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/klaytn/klaytn/log"
+	"github.com/klaytn/klaytn/log/term"
+	"github.com/onsi/ginkgo/reporters/stenographer/support/go-colorable"
 	"io"
 	"math/rand"
 	"net"
+	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -245,6 +249,9 @@ func TestUDP_findnodeTimeout(t *testing.T) {
 }
 
 func TestUDP_findnode(t *testing.T) {
+
+	enableLog() // Change verbosity level in the function if needed
+
 	test := newUDPTest(t)
 	defer test.table.Close()
 
@@ -282,7 +289,25 @@ func TestUDP_findnode(t *testing.T) {
 	waitNeighbors(expected.entries[maxNeighbors:])
 }
 
+// TODO-Klaytn: To enable logging in the test code, we can use the following function.
+// This function will be moved to somewhere utility functions are located.
+func enableLog() {
+	usecolor := term.IsTty(os.Stderr.Fd()) && os.Getenv("TERM") != "dumb"
+	output := io.Writer(os.Stderr)
+	if usecolor {
+		output = colorable.NewColorableStderr()
+	}
+	glogger := log.NewGlogHandler(log.StreamHandler(output, log.TerminalFormat(usecolor)))
+	log.PrintOrigins(true)
+	log.ChangeGlobalLogLevel(glogger, log.Lvl(5))
+	glogger.Vmodule("")
+	glogger.BacktraceAt("")
+	log.Root().SetHandler(glogger)
+}
+
 func TestUDP_findnodeMultiReply(t *testing.T) {
+	enableLog() // Change verbosity level in the function if needed
+
 	test := newUDPTest(t)
 	defer test.table.Close()
 

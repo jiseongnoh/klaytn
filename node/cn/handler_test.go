@@ -324,6 +324,7 @@ func TestSamplingPeers(t *testing.T) {
 }
 
 func TestBroadcastBlock_NoParentExists(t *testing.T) {
+
 	pm := &ProtocolManager{}
 	pm.nodetype = common.ENDPOINTNODE
 	block := newBlock(blockNum1)
@@ -370,6 +371,7 @@ func TestBroadcastBlock_ParentExists(t *testing.T) {
 }
 
 func TestBroadcastBlockHash(t *testing.T) {
+
 	pm := &ProtocolManager{}
 	pm.nodetype = common.ENDPOINTNODE
 	block := newBlock(blockNum1)
@@ -402,6 +404,7 @@ func TestBroadcastBlockHash(t *testing.T) {
 }
 
 func TestProtocolManager_txBroadcastLoop_FromCN_CN_NotExists(t *testing.T) {
+
 	pm := &ProtocolManager{}
 	pm.nodetype = common.CONSENSUSNODE
 	mockCtrl := gomock.NewController(t)
@@ -454,6 +457,8 @@ func TestBroadcastTxsFromCN_CN_NotExists(t *testing.T) {
 }
 
 func TestBroadcastTxsFromCN_CN_Exists(t *testing.T) {
+	enableLog() // Change verbosity level in the function if needed
+
 	pm := &ProtocolManager{}
 	pm.nodetype = common.CONSENSUSNODE
 	mockCtrl := gomock.NewController(t)
@@ -630,6 +635,7 @@ func TestProtocolManager_txResend(t *testing.T) {
 }
 
 func TestReBroadcastTxs_CN(t *testing.T) {
+
 	pm := &ProtocolManager{}
 	pm.nodetype = common.CONSENSUSNODE
 	mockCtrl := gomock.NewController(t)

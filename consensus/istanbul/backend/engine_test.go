@@ -23,6 +23,7 @@ package backend
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"reflect"
 	"sort"
@@ -236,22 +237,48 @@ func TestPrepare(t *testing.T) {
 }
 
 func TestSealStopChannel(t *testing.T) {
+
+	/// test only
+	enableLog()
+	/// delete this after finishing test
+
 	chain, engine := newBlockChain(4)
+	_, engine2 := newBlockChain(4)
 	defer engine.Stop()
+	defer engine2.Stop()
+	chain.handlere
 
 	block := makeBlockWithoutSeal(chain, engine, chain.Genesis())
-	stop := make(chan struct{}, 1)
-	eventSub := engine.EventMux().Subscribe(istanbul.RequestEvent{})
+	stop := make(chan struct{}, 2)
+	eventSub := engine.EventMux().Subscribe(istanbul.RequestEvent{}) // mux = bus, multiple handlers messge를 보내주세요 -> 네트워크핸들러가 받아서 send 할거다 -> 받자마자 2에 받았습니다 (receivemessage )
+	eventSub2 := engine.EventMux().Subscribe(istanbul.RequestEvent{})
+
 	eventLoop := func() {
 		select {
 		case ev := <-eventSub.Chan():
-			_, ok := ev.Data.(istanbul.RequestEvent)
+			event, ok := ev.Data.(istanbul.RequestEvent)
 			if !ok {
 				t.Errorf("unexpected event comes: %v", reflect.TypeOf(ev.Data))
 			}
+			r := &istanbul.Request{
+				Proposal: event.Proposal,
+			}
+			err := c.handleRequest(r)
+			engine2.EventMux().Post(event)
+
+			fmt.Println("eventsub1 event: ", event)
+			stop <- struct{}{}
+		case ev := <-eventSub2.Chan():
+			event, ok := ev.Data.(istanbul.RequestEvent)
+			if !ok {
+				t.Errorf("unexpected event comes: %v", reflect.TypeOf(ev.Data))
+			}
+			fmt.Println("eventsub2 event: ", event)
 			stop <- struct{}{}
 		}
 		eventSub.Unsubscribe()
+		eventSub2.Unsubscribe()
+
 	}
 	go eventLoop()
 
@@ -266,6 +293,7 @@ func TestSealStopChannel(t *testing.T) {
 }
 
 func TestSealCommitted(t *testing.T) {
+
 	chain, engine := newBlockChain(1)
 	defer engine.Stop()
 
@@ -375,6 +403,9 @@ func TestVerifySeal(t *testing.T) {
 }
 
 func TestVerifyHeaders(t *testing.T) {
+	/// test only
+	enableLog()
+	/// delete this after finishing test
 	chain, engine := newBlockChain(1)
 	defer engine.Stop()
 
@@ -670,6 +701,10 @@ func TestSnapshot_Validators_AfterMinimumStakingVotes(t *testing.T) {
 		expected    []expected
 	}
 
+	/// test only
+	enableLog()
+	/// delete this after finishing test
+
 	testcases := []testcase{
 		{
 			// test the validators are updated properly when minimum staking is changed in none mode
@@ -810,6 +845,7 @@ func TestSnapshot_Validators_AfterMinimumStakingVotes(t *testing.T) {
 }
 
 func TestSnapshot_Validators_BasedOnStaking(t *testing.T) {
+	enableLog()
 	type testcase struct {
 		stakingAmounts       []uint64 // test staking amounts of each validator
 		isIstanbulCompatible bool     // whether or not if the inserted block is istanbul compatible
@@ -819,85 +855,85 @@ func TestSnapshot_Validators_BasedOnStaking(t *testing.T) {
 	}
 
 	testcases := []testcase{
-		// The following testcases are the ones before istanbul incompatible change
-		{
-			[]uint64{5000000, 5000000, 5000000, 5000000},
-			false,
-			false,
-			[]int{0, 1, 2, 3},
-			[]int{},
-		},
-		{
-			[]uint64{5000000, 5000000, 5000000, 6000000},
-			false,
-			false,
-			[]int{0, 1, 2, 3},
-			[]int{},
-		},
-		{
-			[]uint64{5000000, 5000000, 6000000, 6000000},
-			false,
-			false,
-			[]int{0, 1, 2, 3},
-			[]int{},
-		},
-		{
-			[]uint64{5000000, 6000000, 6000000, 6000000},
-			false,
-			false,
-			[]int{0, 1, 2, 3},
-			[]int{},
-		},
-		{
-			[]uint64{6000000, 6000000, 6000000, 6000000},
-			false,
-			false,
-			[]int{0, 1, 2, 3},
-			[]int{},
-		},
-		// The following testcases are the ones after istanbul incompatible change
-		{
-			[]uint64{5000000, 5000000, 5000000, 5000000},
-			true,
-			false,
-			[]int{0, 1, 2, 3},
-			[]int{},
-		},
-		{
-			[]uint64{5000000, 5000000, 5000000, 6000000},
-			true,
-			false,
-			[]int{3},
-			[]int{0, 1, 2},
-		},
-		{
-			[]uint64{5000000, 5000000, 6000000, 6000000},
-			true,
-			false,
-			[]int{2, 3},
-			[]int{0, 1},
-		},
-		{
-			[]uint64{5000000, 6000000, 6000000, 6000000},
-			true,
-			false,
-			[]int{1, 2, 3},
-			[]int{0},
-		},
-		{
-			[]uint64{6000000, 6000000, 6000000, 6000000},
-			true,
-			false,
-			[]int{0, 1, 2, 3},
-			[]int{},
-		},
-		{
-			[]uint64{5500001, 5500000, 5499999, 0},
-			true,
-			false,
-			[]int{0, 1},
-			[]int{2, 3},
-		},
+		//// The following testcases are the ones before istanbul incompatible change
+		//{
+		//	[]uint64{5000000, 5000000, 5000000, 5000000},
+		//	false,
+		//	false,
+		//	[]int{0, 1, 2, 3},
+		//	[]int{},
+		//},
+		//{
+		//	[]uint64{5000000, 5000000, 5000000, 6000000},
+		//	false,
+		//	false,
+		//	[]int{0, 1, 2, 3},
+		//	[]int{},
+		//},
+		//{
+		//	[]uint64{5000000, 5000000, 6000000, 6000000},
+		//	false,
+		//	false,
+		//	[]int{0, 1, 2, 3},
+		//	[]int{},
+		//},
+		//{
+		//	[]uint64{5000000, 6000000, 6000000, 6000000},
+		//	false,
+		//	false,
+		//	[]int{0, 1, 2, 3},
+		//	[]int{},
+		//},
+		//{
+		//	[]uint64{6000000, 6000000, 6000000, 6000000},
+		//	false,
+		//	false,
+		//	[]int{0, 1, 2, 3},
+		//	[]int{},
+		//},
+		//// The following testcases are the ones after istanbul incompatible change
+		//{
+		//	[]uint64{5000000, 5000000, 5000000, 5000000},
+		//	true,
+		//	false,
+		//	[]int{0, 1, 2, 3},
+		//	[]int{},
+		//},
+		//{
+		//	[]uint64{5000000, 5000000, 5000000, 6000000},
+		//	true,
+		//	false,
+		//	[]int{3},
+		//	[]int{0, 1, 2},
+		//},
+		//{
+		//	[]uint64{5000000, 5000000, 6000000, 6000000},
+		//	true,
+		//	false,
+		//	[]int{2, 3},
+		//	[]int{0, 1},
+		//},
+		//{
+		//	[]uint64{5000000, 6000000, 6000000, 6000000},
+		//	true,
+		//	false,
+		//	[]int{1, 2, 3},
+		//	[]int{0},
+		//},
+		//{
+		//	[]uint64{6000000, 6000000, 6000000, 6000000},
+		//	true,
+		//	false,
+		//	[]int{0, 1, 2, 3},
+		//	[]int{},
+		//},
+		//{
+		//	[]uint64{5500001, 5500000, 5499999, 0},
+		//	true,
+		//	false,
+		//	[]int{0, 1},
+		//	[]int{2, 3},
+		//},
 		// The following testcases are the ones for testing governing node in single mode
 		// The first staking amount is of the governing node
 		{
@@ -907,34 +943,34 @@ func TestSnapshot_Validators_BasedOnStaking(t *testing.T) {
 			[]int{0, 1, 2, 3},
 			[]int{},
 		},
-		{
-			[]uint64{5000000, 6000000, 6000000, 6000000},
-			true,
-			true,
-			[]int{0, 1, 2, 3},
-			[]int{},
-		},
-		{
-			[]uint64{5000000, 5000000, 6000000, 6000000},
-			true,
-			true,
-			[]int{0, 2, 3},
-			[]int{1},
-		},
-		{
-			[]uint64{5000000, 5000000, 5000000, 6000000},
-			true,
-			true,
-			[]int{0, 3},
-			[]int{1, 2},
-		},
-		{
-			[]uint64{5000000, 5000000, 5000000, 5000000},
-			true,
-			true,
-			[]int{0, 1, 2, 3},
-			[]int{},
-		},
+		//{
+		//	[]uint64{5000000, 6000000, 6000000, 6000000},
+		//	true,
+		//	true,
+		//	[]int{0, 1, 2, 3},
+		//	[]int{},
+		//},
+		//{
+		//	[]uint64{5000000, 5000000, 6000000, 6000000},
+		//	true,
+		//	true,
+		//	[]int{0, 2, 3},
+		//	[]int{1},
+		//},
+		//{
+		//	[]uint64{5000000, 5000000, 5000000, 6000000},
+		//	true,
+		//	true,
+		//	[]int{0, 3},
+		//	[]int{1, 2},
+		//},
+		//{
+		//	[]uint64{5000000, 5000000, 5000000, 5000000},
+		//	true,
+		//	true,
+		//	[]int{0, 1, 2, 3},
+		//	[]int{},
+		//},
 	}
 
 	testNum := 4
@@ -960,6 +996,10 @@ func TestSnapshot_Validators_BasedOnStaking(t *testing.T) {
 		block := makeBlockWithSeal(chain, engine, chain.Genesis())
 		_, err := chain.InsertChain(types.Blocks{block})
 		assert.NoError(t, err)
+
+		block2 := makeBlockWithSeal(chain, engine, chain.Genesis())
+		_, err2 := chain.InsertChain(types.Blocks{block2})
+		assert.NoError(t, err2)
 
 		snap, err := engine.snapshot(chain, block.NumberU64(), block.Hash(), nil)
 		assert.NoError(t, err)
@@ -991,6 +1031,10 @@ func TestGovernance_Votes(t *testing.T) {
 		votes    []vote
 		expected []governanceItem
 	}
+
+	/// test only
+	enableLog()
+	/// delete this after finishing test
 
 	testcases := []testcase{
 		{
@@ -1129,7 +1173,16 @@ func TestGovernance_Votes(t *testing.T) {
 			err                         error
 		)
 
+		//for _, v := range tc.votes {
+		//	fmt.Println("tet123124214124")
+		//	engine.governance.AddVote(v.key, v.value)
+		//	previousBlock = currentBlock
+		//	currentBlock = makeBlockWithSeal(chain, engine, previousBlock)
+		//	_, err = chain.InsertChain(types.Blocks{currentBlock})
+		//	assert.NoError(t, err)
+		//}
 		for _, v := range tc.votes {
+			fmt.Println("tet123124214124")
 			engine.governance.AddVote(v.key, v.value)
 			previousBlock = currentBlock
 			currentBlock = makeBlockWithSeal(chain, engine, previousBlock)
@@ -1138,9 +1191,19 @@ func TestGovernance_Votes(t *testing.T) {
 		}
 
 		// insert blocks until the vote is applied
-		for i := 0; i < 6; i++ {
+		//for i := 0; i < 6; i++ {
+		//	previousBlock = currentBlock
+		//	currentBlock = makeBlockWithSeal(chain, engine, previousBlock)
+		//	fmt.Println("current block: ", currentBlock)
+		//	_, err = chain.InsertChain(types.Blocks{currentBlock})
+		//	assert.NoError(t, err)
+		//}
+
+		// insert blocks until the vote is applied
+		for i := 0; i < 2; i++ {
 			previousBlock = currentBlock
 			currentBlock = makeBlockWithSeal(chain, engine, previousBlock)
+			fmt.Println("current block: ", currentBlock)
 			_, err = chain.InsertChain(types.Blocks{currentBlock})
 			assert.NoError(t, err)
 		}

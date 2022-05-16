@@ -5,6 +5,7 @@
 GO ?= latest
 GOPATH := $(or $(GOPATH), $(shell go env GOPATH))
 GORUN = env GOPATH=$(GOPATH) GO111MODULE=on go run
+#GORUN = env GOPATH=$(GOPATH) GO111MODULE=on go build
 
 BIN = $(shell pwd)/build/bin
 BUILD_PARAM?=install
@@ -32,7 +33,7 @@ tar-baobab-linux-amd64-all: ${TAR_BAOBAB_LINUX_amd64_OBJECTS}
 tar-baobab-darwin-amd64-all: ${TAR_BAOBAB_DARWIN_amd64_OBJECTS}
 
 ${OBJECTS}:
-	$(GORUN) build/ci.go ${BUILD_PARAM} ./cmd/$@
+	$(GORUN) -race -gcflags="all=-N -l"  build/ci.go ${BUILD_PARAM} ./cmd/$@
 
 ${RPM_OBJECTS}:
 	./build/package-rpm.sh ${@:rpm-%=%}

@@ -74,6 +74,7 @@ func (c *core) unsubscribeEvents() {
 	c.finalCommittedSub.Unsubscribe()
 }
 
+// eventmux
 func (c *core) handleEvents() {
 	// Clear state
 	defer func() {
@@ -91,7 +92,7 @@ func (c *core) handleEvents() {
 			}
 			// A real event arrived, process interesting content
 			switch ev := event.Data.(type) {
-			case istanbul.RequestEvent:
+			case istanbul.RequestEvent: // 프로포저일 때 프로포저 만들어서 던지는 이벤트
 				r := &istanbul.Request{
 					Proposal: ev.Proposal,
 				}
@@ -99,12 +100,12 @@ func (c *core) handleEvents() {
 				if err == errFutureMessage {
 					c.storeRequestMsg(r)
 				}
-			case istanbul.MessageEvent:
+			case istanbul.MessageEvent: // 합의과정 메시지 받아서 처리는 이벤트
 				if err := c.handleMsg(ev.Payload); err == nil {
-					c.backend.GossipSubPeer(ev.Hash, c.valSet, ev.Payload)
+					c.backend.GossipSubPeer(ev.Hash, c.valSet, ev.Payload) // why? current committee 가 아니면 source가 나인 메시지를 가십하지 않음.
 					//c.backend.Gossip(c.valSet, ev.Payload)
 				}
-			case backlogEvent:
+			case backlogEvent: // 메시지 받았지만 나중 블록에 대한 합의 메시지
 				_, src := c.valSet.GetByAddress(ev.src)
 				if src == nil {
 					c.logger.Error("Invalid address in valSet", "addr", ev.src)
@@ -158,6 +159,7 @@ func (c *core) handleMsg(payload []byte) error {
 		if c.backend.NodeType() == common.CONSENSUSNODE {
 			logger.Error("Failed to decode message from payload", "err", err)
 		}
+		logger.Info("============= core/handler.go:163 error occurred!   ", err)
 		return err
 	}
 

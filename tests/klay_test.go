@@ -285,6 +285,7 @@ func makeNewTransactionsToRing(bcdata *BCData, accountMap *AccountMap, signer ty
 }
 
 func TestValueTransfer(t *testing.T) {
+	enableLog()
 	var nBlocks int = 3
 	var txPerBlock int = 10
 
@@ -360,6 +361,8 @@ func TestValueTransferRing(t *testing.T) {
 	if testing.Verbose() {
 		enableLog()
 	}
+	enableLog()
+
 	prof := profile.NewProfiler()
 
 	numTransactions := 20000
@@ -635,8 +638,11 @@ func BenchmarkValueTransfer(t *testing.B) {
 	if testing.Verbose() {
 		enableLog()
 	}
+	enableLog()
+
 	prof := profile.NewProfiler()
-	opt := testOption{t.N, 2000, 4, 1, []byte{}, makeTransactionsToRandom}
+	//opt := testOption{t.N, 2000, 4, 1, []byte{}, makeTransactionsToRandom}
+	opt := testOption{t.N, 100, 4, 1, []byte{}, makeTransactionsToRandom}
 
 	// Initialize blockchain
 	start := time.Now()
@@ -682,6 +688,8 @@ func BenchmarkValueTransfer(t *testing.B) {
 	if testing.Verbose() {
 		prof.PrintProfileInfo()
 	}
+	prof.PrintProfileInfo()
+
 }
 
 // BenchmarkNewValueTransfer measures TPS without network traffics
@@ -691,6 +699,8 @@ func BenchmarkNewValueTransfer(t *testing.B) {
 	if testing.Verbose() {
 		enableLog()
 	}
+	enableLog()
+
 	prof := profile.NewProfiler()
 	opt := testOption{t.N, 2000, 4, 1, []byte{}, makeNewTransactionsToRandom}
 

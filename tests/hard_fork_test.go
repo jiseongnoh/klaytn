@@ -52,6 +52,8 @@ func TestHardForkBlock(t *testing.T) {
 	if testing.Verbose() {
 		enableLog()
 	}
+	enableLog()
+
 	var genesis blockchain.Genesis
 
 	// If you uncomment the below, you can find this test failed with an error "!!!!!HARD FORK DETECTED!!!!!"

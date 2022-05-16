@@ -34,6 +34,8 @@ import (
 
 // Tests that simple header verification works, for both good and bad blocks.
 func TestHeaderVerification(t *testing.T) {
+	enableLog() // Change verbosity level in the function if needed
+
 	// Create a simple chain to verify
 	var (
 		testdb    = database.NewMemoryDBManager()

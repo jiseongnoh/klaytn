@@ -436,7 +436,9 @@ func initBlockChain(db database.DBManager, cacheConfig *blockchain.CacheConfig, 
 		genesis.BlockScore = big.NewInt(1)
 		genesis.Config.Governance = params.GetDefaultGovernanceConfig(params.UseIstanbul)
 		genesis.Config.Istanbul = params.GetDefaultIstanbulConfig()
-		genesis.Config.UnitPrice = 25 * params.Ston
+		//genesis.Config.UnitPrice = 25 * params.Ston
+		genesis.Config.UnitPrice = 750 * params.Ston
+
 	}
 
 	alloc := make(blockchain.GenesisAlloc)

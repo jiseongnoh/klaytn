@@ -54,6 +54,7 @@ func (sb *backend) Protocol() consensus.Protocol {
 }
 
 // HandleMsg implements consensus.Handler.HandleMsg
+// p2p message 중 istanbul 이면 handler.go:HandleMsg
 func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 	sb.coreMu.Lock()
 	defer sb.coreMu.Unlock()
@@ -88,7 +89,7 @@ func (sb *backend) HandleMsg(addr common.Address, msg p2p.Msg) (bool, error) {
 			return true, nil
 		}
 		sb.knownMessages.Add(hash, true)
-
+		// istanbulEventMux: core/handler.go 의 HandleEvent
 		go sb.istanbulEventMux.Post(istanbul.MessageEvent{
 			Payload: data,
 			Hash:    cmsg.PrevHash,

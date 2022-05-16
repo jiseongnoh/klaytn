@@ -351,6 +351,8 @@ func TestTxFeeDelegatedCancelWithRatio(t *testing.T) {
 	if testing.Verbose() {
 		enableLog()
 	}
+	enableLog()
+
 	prof := profile.NewProfiler()
 	opt := testOption{1000, 2000, 4, 1, []byte{}, makeNewTransactionsToRandom}
 
