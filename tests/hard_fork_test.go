@@ -62,7 +62,7 @@ func TestHardForkBlock(t *testing.T) {
 
 	// If you print out b1.rlp and b2.rlp, uncomment below.
 	// `genBlocks` could be failed sometimes depends on the order of transaction in a block. Just try again.
-	//genBlocks(t)
+	genBlocks(t)
 	//return
 
 	// load raw data from files.
@@ -278,6 +278,8 @@ func genBlocks(t *testing.T) {
 			contract.Addr = crypto.CreateAddress(reservoir.GetAddr(), reservoir.GetNonce())
 
 			reservoir.AddNonce()
+			fmt.Println("0000000011111")
+
 		}
 		{
 			amount := new(big.Int).SetUint64(0)
@@ -306,6 +308,7 @@ func genBlocks(t *testing.T) {
 			txs = append(txs, tx)
 
 			reservoir.AddNonce()
+			fmt.Println("1111111111111")
 		}
 		{
 			amount := new(big.Int).SetUint64(0)

@@ -21,6 +21,7 @@
 package core
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/klaytn/klaytn/blockchain/types"
@@ -30,6 +31,7 @@ import (
 
 func (c *core) sendPreprepare(request *istanbul.Request) {
 	logger := c.logger.NewWith("state", c.state)
+	fmt.Println("mock send preprepare")
 
 	header := types.SetRoundToHeader(request.Proposal.Header(), c.currentView().Round.Int64())
 	request.Proposal = request.Proposal.WithSeal(header)

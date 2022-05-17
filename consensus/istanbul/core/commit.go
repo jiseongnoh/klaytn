@@ -21,6 +21,7 @@
 package core
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/klaytn/klaytn/common"
@@ -28,6 +29,7 @@ import (
 )
 
 func (c *core) sendCommit() {
+	fmt.Println("mock send commit")
 	logger := c.logger.NewWith("state", c.state)
 	if c.current.Preprepare == nil {
 		logger.Error("Failed to get parentHash from roundState in sendCommit")
@@ -73,6 +75,7 @@ func (c *core) broadcastCommit(sub *istanbul.Subject) {
 
 func (c *core) handleCommit(msg *message, src istanbul.Validator) error {
 	// Decode COMMIT message
+	fmt.Println("mock handle commit")
 	var commit *istanbul.Subject
 	err := msg.Decode(&commit)
 	if err != nil {
