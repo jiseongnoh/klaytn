@@ -71,6 +71,10 @@ type (
 	blockPeriod            uint64
 )
 
+func TestMy(t *testing.T) {
+	abcd()
+}
+
 // makeCommittedSeals returns a list of committed seals for the global variable nodeKeys.
 func makeCommittedSeals(hash common.Hash) [][]byte {
 	committedSeals := make([][]byte, len(nodeKeys))

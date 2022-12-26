@@ -65,7 +65,7 @@ func (ist *IstanbulExtra) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&istanbulExtra); err != nil {
 		return err
 	}
-	ist.Validators, ist.Seal, ist.CommittedSeal = istanbulExtra.Validators, istanbulExtra.Seal, istanbulExtra.CommittedSeal
+	ist.Validators, ist.Seal, ist.CommittedSeal = istanbulExtra.Validators, istanbulExtra.Seal, istanbulExtra.CommittedSeal // commi
 	return nil
 }
 
@@ -98,7 +98,7 @@ func IstanbulFilteredHeader(h *Header, keepSeal bool) *Header {
 	if !keepSeal {
 		istanbulExtra.Seal = []byte{}
 	}
-	istanbulExtra.CommittedSeal = [][]byte{}
+	istanbulExtra.CommittedSeal = [][]byte{} // committed seal 을 여기서 없앥다
 
 	payload, err := rlp.EncodeToBytes(&istanbulExtra)
 	if err != nil {
@@ -111,6 +111,7 @@ func IstanbulFilteredHeader(h *Header, keepSeal bool) *Header {
 }
 
 func SetRoundToHeader(h *Header, r int64) *Header {
+	//logger.Info("setroundtoheader", "round", r)
 	h.Extra[IstanbulExtraVanity-1] = byte(r)
 	return h
 }

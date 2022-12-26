@@ -22,9 +22,11 @@ package backend
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -42,6 +44,10 @@ import (
 	"github.com/klaytn/klaytn/networks/rpc"
 	"github.com/klaytn/klaytn/reward"
 	"github.com/klaytn/klaytn/rlp"
+
+	blst "github.com/prysmaticlabs/prysm/v3/crypto/bls"
+	"github.com/prysmaticlabs/prysm/v3/crypto/hash"
+	"github.com/prysmaticlabs/prysm/v3/encoding/bytesutil"
 )
 
 const (
@@ -100,6 +106,70 @@ var (
 	inmemoryValidatorsPerBlock = 30   // Approximate number of validators' addresses from ecrecover
 	signatureAddresses, _      = lru.NewARC(inmemoryBlocks * inmemoryValidatorsPerBlock)
 )
+
+func abcd() {
+	str1 := "5f5544736085bc2ccd1202c4c552c61e6bc326605e1d09e447704281b4016eae"
+	str2 := "41993bf777395b8d9918cb5687ce2d22671748579a89f7cf2217ce021704909a"
+	data1, err := hex.DecodeString(str1)
+	if err != nil {
+		panic(err)
+	}
+	data2, err := hex.DecodeString(str2)
+	if err != nil {
+		panic(err)
+	}
+
+	b1 := bytesutil.ToBytes32(data1)
+	sk1, err := blst.SecretKeyFromBytes(b1[:])
+	b2 := bytesutil.ToBytes32(data2)
+	sk2, err := blst.SecretKeyFromBytes(b2[:])
+
+	pk1 := sk1.PublicKey()
+	fmt.Printf("sk1: %x\n", sk1.Marshal())
+	fmt.Printf("pk1: %x\n", pk1.Marshal())
+
+	blockNum := uint64(1234)
+	buf := &bytes.Buffer{}
+	_ = binary.Write(buf, binary.BigEndian, blockNum)
+	msg := buf.Bytes()
+	fmt.Printf("msg: %x = %d\n", msg, blockNum)
+
+	sig1 := sk1.Sign(msg)
+	fmt.Println("sig: \n", sig1.Marshal())
+
+	ok1 := sig1.Verify(pk1, msg)
+	fmt.Println("ver: \n", ok1)
+
+	pk2 := sk2.PublicKey()
+	fmt.Printf("sk2: %x\n", sk2.Marshal())
+	fmt.Printf("pk2: %x\n", pk2.Marshal())
+
+	blockNum2 := uint64(1235)
+	buf2 := &bytes.Buffer{}
+	_ = binary.Write(buf2, binary.BigEndian, blockNum2)
+	msg2 := buf2.Bytes()
+	fmt.Printf("msg2: %x = %d\n", msg2, blockNum2)
+
+	sig2 := sk2.Sign(msg2)
+	fmt.Println("sig2: \n", sig2.Marshal())
+
+	ok2 := sig2.Verify(pk2, msg2)
+	fmt.Println("ver: \n", ok2)
+	sig3 := sig2.Marshal()
+	fmt.Println(len(sig3))
+	for i := range sig3 {
+		sig3[i] ^= sig1.Marshal()[i]
+	}
+
+	fmt.Println("sig3: \n", sig3)
+	for i := range sig3 {
+		sig3[i] ^= sig1.Marshal()[i]
+	}
+	fmt.Println("sig3: \n", sig3)
+	random := hash.Hash(sig3)
+	fmt.Println("random: \n", random)
+
+}
 
 // cacheSignatureAddresses extracts the address from the given data and signature and cache them for later usage.
 func cacheSignatureAddresses(data []byte, sig []byte) (common.Address, error) {
@@ -208,6 +278,33 @@ func (sb *backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 	} else if header.BaseFee != nil {
 		return consensus.ErrInvalidBaseFee
 	}
+	if header.Number.Uint64() >= 1 {
+		// todo: random check
+		// todo
+		myPrivateKeyHex := "5f5544736085bc2ccd1202c4c552c61e6bc326605e1d09e447704281b4016eae"
+		myPrivateKeyBin, _ := hex.DecodeString(myPrivateKeyHex)
+
+		tempPrivateKey := bytesutil.ToBytes32(myPrivateKeyBin)
+		realMyPrivateKey, _ := blst.SecretKeyFromBytes(tempPrivateKey[:])
+
+		buffer := &bytes.Buffer{}
+		_ = binary.Write(buffer, binary.BigEndian, header.Number.Uint64()+1)
+		msg := buffer.Bytes()
+
+		myPublicKey := realMyPrivateKey.PublicKey()
+		fmt.Println(len(header.SigNum))
+		sig, err := blst.SignatureFromBytes(header.SigNum)
+		if err != nil {
+			fmt.Println("signatureFromBytes error")
+			return err
+		}
+		fmt.Println("signatureFromBytes ok")
+		ok := sig.Verify(myPublicKey, msg)
+		fmt.Println("ok?", ok)
+		if !ok {
+			return errors.New("not ok")
+		}
+	}
 
 	// Don't waste time checking blocks from the future
 	if header.Time.Cmp(big.NewInt(now().Add(allowedFutureBlockTime).Unix())) > 0 {
@@ -222,6 +319,9 @@ func (sb *backend) verifyHeader(chain consensus.ChainReader, header *types.Heade
 	if header.BlockScore == nil || header.BlockScore.Cmp(defaultBlockScore) != 0 {
 		return errInvalidBlockScore
 	}
+	//if header.random.cmp(verify(proposer.pubkey, header.random, blocknumber)) != 0 {
+	//	return errInvalidRandom
+	//}
 
 	return sb.verifyCascadingFields(chain, header, parents)
 }
@@ -414,6 +514,24 @@ func (sb *backend) Prepare(chain consensus.ChainReader, header *types.Header) er
 
 	// if there is a vote to attach, attach it to the header
 	header.Vote = sb.governance.GetEncodedVote(sb.address, number)
+
+	// todo
+	myPrivateKeyHex := "5f5544736085bc2ccd1202c4c552c61e6bc326605e1d09e447704281b4016eae"
+	myPrivateKeyBin, _ := hex.DecodeString(myPrivateKeyHex)
+
+	tempPrivateKey := bytesutil.ToBytes32(myPrivateKeyBin)
+	realMyPrivateKey, _ := blst.SecretKeyFromBytes(tempPrivateKey[:])
+
+	// myPublicKey := realMyPrivateKey.PublicKey()
+
+	buffer := &bytes.Buffer{}
+	_ = binary.Write(buffer, binary.BigEndian, number)
+	msg := buffer.Bytes()
+
+	mySig := realMyPrivateKey.Sign(msg)
+
+	header.SigNum = mySig.Marshal()
+	fmt.Printf("12341234___%x___12341234\n", header.SigNum)
 
 	// add validators (council list) in snapshot to extraData's validators section
 	extra, err := prepareExtra(header, snap.validators())

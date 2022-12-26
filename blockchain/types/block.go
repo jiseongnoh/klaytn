@@ -65,6 +65,8 @@ type Header struct {
 	Extra      []byte `json:"extraData"                 gencodec:"required"`
 	Governance []byte `json:"governanceData"            gencodec:"required"`
 	Vote       []byte `json:"voteData,omitempty"`
+	// TODO SigNum is the block proposer's signature of current block number
+	SigNum []byte `json:"SignatureOfNumber"`
 
 	BaseFee *big.Int `json:"baseFeePerGas,omitempty"    rlp:"optional"`
 }
